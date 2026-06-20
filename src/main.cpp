@@ -487,6 +487,11 @@ struct App {
         QDialog dialog(window);
         dialog.setWindowTitle("Login Methods — " + entries->currentItem()->text(0));
         auto* outer = new QVBoxLayout(&dialog);
+        auto* hint = new QLabel(
+            "How you log in to this entry. Leave \"via\" as (direct) for email/password;\n"
+            "pick an account for OAuth — e.g. \"github → GitHub\" = log in with GitHub.");
+        hint->setWordWrap(true);
+        outer->addWidget(hint);
         auto* list = new QListWidget;
         outer->addWidget(list);
 
@@ -521,7 +526,8 @@ struct App {
         auto* viaBox = new QComboBox;
         viaBox->addItem("(direct)", QVariant());
         for (const auto& e : *all) {
-            if (e.entry_type == "account" || e.entry_type == "service") {
+            // Exclude the entry itself: you cannot log in to it via itself.
+            if ((e.entry_type == "account" || e.entry_type == "service") && e.id != *id) {
                 viaBox->addItem(QString::fromStdString(e.label), static_cast<qlonglong>(e.id));
             }
         }
