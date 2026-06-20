@@ -480,16 +480,29 @@ struct App {
             return;
         }
         std::unordered_map<std::int64_t, QString> name_by_id;
+        const Entry* self_e = nullptr;
         for (const auto& e : *all) {
             name_by_id[e.id] = QString::fromStdString(e.label);
+            if (e.id == *id) {
+                self_e = &e;
+            }
         }
+        // Login methods describe how you log in to an account; services/personas are containers.
+        if (!self_e || self_e->entry_type != "account") {
+            QMessageBox::information(
+                window, "Login methods",
+                "Login methods apply to accounts (how you log in to that account).\n"
+                "Select an account entry.");
+            return;
+        }
+        const auto own_service = self_e->parent_id;
 
         QDialog dialog(window);
         dialog.setWindowTitle("Login Methods — " + entries->currentItem()->text(0));
         auto* outer = new QVBoxLayout(&dialog);
         auto* hint = new QLabel(
-            "How you log in to this entry. Leave \"via\" as (direct) for email/password;\n"
-            "pick an account for OAuth — e.g. \"github → GitHub\" = log in with GitHub.");
+            "How you log in to this account. Leave \"via\" as (direct) for email/password;\n"
+            "for OAuth pick the provider account on another service — e.g. \"google → 本名 (Google)\".");
         hint->setWordWrap(true);
         outer->addWidget(hint);
         auto* list = new QListWidget;
@@ -526,10 +539,22 @@ struct App {
         auto* viaBox = new QComboBox;
         viaBox->addItem("(direct)", QVariant());
         for (const auto& e : *all) {
-            // Exclude the entry itself: you cannot log in to it via itself.
-            if ((e.entry_type == "account" || e.entry_type == "service") && e.id != *id) {
-                viaBox->addItem(QString::fromStdString(e.label), static_cast<qlonglong>(e.id));
+            if (e.entry_type != "account" || e.id == *id) {
+                continue;
             }
+            // The OAuth provider is an account on a *different* service (you never log in to a
+            // service via itself). Same-service accounts and self are excluded structurally —
+            // this is what kills the "self-reference" problem at the model level.
+            if (own_service && e.parent_id && *e.parent_id == *own_service) {
+                continue;
+            }
+            QString text = QString::fromStdString(e.label);
+            if (e.parent_id) {
+                if (auto it = name_by_id.find(*e.parent_id); it != name_by_id.end()) {
+                    text += " (" + it->second + ")";
+                }
+            }
+            viaBox->addItem(text, static_cast<qlonglong>(e.id));
         }
         auto* notesEdit = new QLineEdit;
         notesEdit->setPlaceholderText("notes");
