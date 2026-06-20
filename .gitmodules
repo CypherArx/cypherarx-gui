@@ -1,0 +1,3 @@
+[submodule "external/cypherarx-core"]
+	path = external/cypherarx-core
+	url = git@github.com:CypherArx/cypherarx-core.git
