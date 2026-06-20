@@ -10,7 +10,6 @@
 
 #include <QApplication>
 #include <QByteArray>
-#include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
 #include <QDialog>
@@ -132,12 +131,14 @@ std::optional<FieldInput> ask_field(QWidget* parent, const FieldInput* prefill =
 struct EntryInput {
     QString label;
     QString type;
-    bool under_selected;
+    std::optional<std::int64_t> parent_id;   // account -> service ; child -> account
+    std::optional<std::int64_t> persona_id;  // account -> persona (nullopt = unspecified)
 };
 
-// Modal Add/Edit Entry dialog: label, entry_type, and (add only) whether to nest under the
-// selection. `prefill` != nullptr edits an existing entry (re-parenting is not offered here).
-std::optional<EntryInput> ask_entry(QWidget* parent, bool has_selection, const QString& sel_label,
+// Modal Add/Edit Entry dialog. Per the two-parent model (§10.1.1) an account points to a
+// service (parent_id) and optionally a persona (persona_id); a child points to its account.
+// The relevant pickers are shown based on the chosen type. `prefill` != nullptr edits.
+std::optional<EntryInput> ask_entry(QWidget* parent, const std::vector<Entry>& all,
                                     const EntryInput* prefill = nullptr) {
     QDialog dialog(parent);
     dialog.setWindowTitle(prefill ? "Edit Entry" : "Add Entry");
@@ -147,22 +148,53 @@ std::optional<EntryInput> ask_entry(QWidget* parent, bool has_selection, const Q
     auto* type = new QComboBox;
     type->addItems({"service", "persona", "account", "child"});
 
+    auto* serviceBox = new QComboBox;  // account -> service (parent_id)
+    auto* personaBox = new QComboBox;  // account -> persona (persona_id), optional
+    auto* accountBox = new QComboBox;  // child   -> account (parent_id)
+    personaBox->addItem("(none)", QVariant());
+    for (const auto& e : all) {
+        const auto id = static_cast<qlonglong>(e.id);
+        const QString name = QString::fromStdString(e.label);
+        if (e.entry_type == "service") {
+            serviceBox->addItem(name, id);
+        } else if (e.entry_type == "persona") {
+            personaBox->addItem(name, id);
+        } else if (e.entry_type == "account") {
+            accountBox->addItem(name, id);
+        }
+    }
+
     form->addRow("Label:", label);
     form->addRow("Type:", type);
+    form->addRow("Service:", serviceBox);
+    form->addRow("Persona:", personaBox);
+    form->addRow("Parent account:", accountBox);
 
-    QCheckBox* under = nullptr;
+    auto syncRows = [&] {
+        const QString t = type->currentText();
+        form->setRowVisible(serviceBox, t == "account");
+        form->setRowVisible(personaBox, t == "account");
+        form->setRowVisible(accountBox, t == "child");
+    };
+    QObject::connect(type, &QComboBox::currentTextChanged, &dialog,
+                     [syncRows](const QString&) { syncRows(); });
+
     if (prefill) {
         label->setText(prefill->label);
-        const int idx = type->findText(prefill->type);
-        if (idx >= 0) {
+        if (const int idx = type->findText(prefill->type); idx >= 0) {
             type->setCurrentIndex(idx);
         }
-    } else {
-        under = new QCheckBox(has_selection ? ("Add under: " + sel_label)
-                                            : "Add under selected entry");
-        under->setEnabled(has_selection);
-        form->addRow("", under);
+        if (prefill->parent_id) {
+            const auto v = static_cast<qlonglong>(*prefill->parent_id);
+            if (const int si = serviceBox->findData(v); si >= 0) serviceBox->setCurrentIndex(si);
+            if (const int ai = accountBox->findData(v); ai >= 0) accountBox->setCurrentIndex(ai);
+        }
+        if (prefill->persona_id) {
+            const auto v = static_cast<qlonglong>(*prefill->persona_id);
+            if (const int pi = personaBox->findData(v); pi >= 0) personaBox->setCurrentIndex(pi);
+        }
     }
+    syncRows();
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     form->addRow(buttons);
@@ -172,7 +204,23 @@ std::optional<EntryInput> ask_entry(QWidget* parent, bool has_selection, const Q
     if (dialog.exec() != QDialog::Accepted || label->text().isEmpty()) {
         return std::nullopt;
     }
-    return EntryInput{label->text(), type->currentText(), under && under->isChecked()};
+
+    EntryInput out;
+    out.label = label->text();
+    out.type = type->currentText();
+    if (out.type == "account") {
+        if (serviceBox->count() > 0 && serviceBox->currentIndex() >= 0) {
+            out.parent_id = serviceBox->currentData().toLongLong();
+        }
+        if (const QVariant pd = personaBox->currentData(); pd.isValid()) {
+            out.persona_id = pd.toLongLong();
+        }
+    } else if (out.type == "child") {
+        if (accountBox->count() > 0 && accountBox->currentIndex() >= 0) {
+            out.parent_id = accountBox->currentData().toLongLong();
+        }
+    }
+    return out;
 }
 
 // First-cut GUI state. Lambdas wire the signals, so no QObject subclass / moc yet.
@@ -183,8 +231,11 @@ struct App {
     QListWidget* fields = nullptr;
     QLabel* fieldHeader = nullptr;
     QLabel* status = nullptr;
+    QComboBox* axisSelect = nullptr;  // 0 = service axis, 1 = persona axis
 
     void set_status(const QString& s) { status->setText(s); }
+
+    bool persona_axis() const { return axisSelect && axisSelect->currentIndex() == 1; }
 
     std::optional<std::int64_t> current_entry_id() const {
         auto* it = entries->currentItem();
@@ -225,21 +276,55 @@ struct App {
             set_status("Failed to read entries: " + error_text(list.error()));
             return;
         }
-        // Build the tree: create all items first, then parent them (a child may precede its
-        // parent in id order, and a tombstoned parent leaves its children at the root).
+
+        // Two views are projections of the same data (§10.1.1): the service axis builds the tree
+        // by parent_id, the persona axis by persona_id. The same account appears in both.
+        const bool by_persona = persona_axis();
+        entries->setHeaderLabels({"Name", "Type", by_persona ? "Service" : "Persona"});
+
+        // id -> label, for the cross-axis column (covers service/persona not shown as nodes too).
+        std::unordered_map<std::int64_t, std::string> label_by_id;
+        for (const auto& e : *list) {
+            label_by_id[e.id] = e.label;
+        }
+        // The opposite axis's roots are hidden in this view; everything else is a node.
+        auto in_axis = [by_persona](const Entry& e) {
+            return e.entry_type != (by_persona ? "service" : "persona");
+        };
+        auto tree_parent = [by_persona](const Entry& e) -> std::optional<std::int64_t> {
+            if (e.entry_type == "account") return by_persona ? e.persona_id : e.parent_id;
+            if (e.entry_type == "child") return e.parent_id;
+            return std::nullopt;  // service / persona roots
+        };
+
+        // Create items first, then parent them (a child may precede its parent in id order, and
+        // a missing/hidden parent leaves its children at the root).
         std::unordered_map<std::int64_t, QTreeWidgetItem*> by_id;
         for (const auto& e : *list) {
+            if (!in_axis(e)) {
+                continue;
+            }
             auto* item = new QTreeWidgetItem;
             item->setText(0, QString::fromStdString(e.label));
             item->setText(1, QString::fromStdString(e.entry_type));
+            if (e.entry_type == "account") {  // show the other axis's parent as context
+                if (const auto cross = by_persona ? e.parent_id : e.persona_id) {
+                    if (auto it = label_by_id.find(*cross); it != label_by_id.end()) {
+                        item->setText(2, QString::fromStdString(it->second));
+                    }
+                }
+            }
             item->setData(0, Qt::UserRole, static_cast<qlonglong>(e.id));
             by_id[e.id] = item;
         }
         for (const auto& e : *list) {
+            if (!in_axis(e)) {
+                continue;
+            }
             auto* item = by_id[e.id];
             QTreeWidgetItem* parent = nullptr;
-            if (e.parent_id) {
-                if (auto it = by_id.find(*e.parent_id); it != by_id.end()) {
+            if (auto p = tree_parent(e)) {
+                if (auto it = by_id.find(*p); it != by_id.end()) {
                     parent = it->second;
                 }
             }
@@ -250,9 +335,10 @@ struct App {
             }
         }
         entries->expandAll();
-        set_status(QString("Vault open — %1 entr%2.")
+        set_status(QString("Vault open — %1 entr%2 · %3 axis")
                        .arg(list->size())
-                       .arg(list->size() == 1 ? "y" : "ies"));
+                       .arg(list->size() == 1 ? "y" : "ies")
+                       .arg(by_persona ? "persona" : "service"));
     }
 
     void refresh_fields() {
@@ -321,19 +407,20 @@ struct App {
             QMessageBox::information(window, "No vault", "Open or create a vault first.");
             return;
         }
-        const auto selected = current_entry_id();
-        const QString sel_label =
-            entries->currentItem() ? entries->currentItem()->text(0) : QString();
-        auto in = ask_entry(window, selected.has_value(), sel_label);
+        auto all = vault->list_entries();
+        if (!all) {
+            QMessageBox::warning(window, "Add failed", error_text(all.error()));
+            return;
+        }
+        auto in = ask_entry(window, *all);
         if (!in) {
             return;
         }
         Entry e;
         e.entry_type = in->type.toStdString();
         e.label = in->label.toStdString();
-        if (in->under_selected && selected) {
-            e.parent_id = *selected;
-        }
+        e.parent_id = in->parent_id;
+        e.persona_id = in->persona_id;
         auto added = vault->add_entry(e);
         if (!added) {
             QMessageBox::warning(window, "Add failed", error_text(added.error()));
@@ -353,16 +440,26 @@ struct App {
             QMessageBox::warning(window, "Edit failed", error_text(cur.error()));
             return;
         }
-        EntryInput pre{QString::fromStdString(cur->label),
-                       QString::fromStdString(cur->entry_type), false};
-        auto in = ask_entry(window, false, QString(), &pre);
+        auto all = vault->list_entries();
+        if (!all) {
+            QMessageBox::warning(window, "Edit failed", error_text(all.error()));
+            return;
+        }
+        EntryInput pre;
+        pre.label = QString::fromStdString(cur->label);
+        pre.type = QString::fromStdString(cur->entry_type);
+        pre.parent_id = cur->parent_id;
+        pre.persona_id = cur->persona_id;
+        auto in = ask_entry(window, *all, &pre);
         if (!in) {
             return;
         }
-        // Keep id/uuid/parent_id and the other text columns; only label & type are edited here.
+        // Keep id/uuid and the other text columns; label/type and both parents are editable.
         Entry e = *cur;
         e.label = in->label.toStdString();
         e.entry_type = in->type.toStdString();
+        e.parent_id = in->parent_id;
+        e.persona_id = in->persona_id;
         if (auto r = vault->update_entry(e); !r) {
             QMessageBox::warning(window, "Edit failed", error_text(r.error()));
             return;
@@ -591,11 +688,18 @@ int main(int argc, char** argv) {
     auto* split = new QHBoxLayout;
 
     auto* leftCol = new QVBoxLayout;
-    leftCol->addWidget(new QLabel("Entries"));
+    auto* entriesHeader = new QHBoxLayout;
+    entriesHeader->addWidget(new QLabel("Entries"));
+    entriesHeader->addStretch();
+    entriesHeader->addWidget(new QLabel("View:"));
+    state.axisSelect = new QComboBox;
+    state.axisSelect->addItems({"Service axis", "Persona axis"});
+    entriesHeader->addWidget(state.axisSelect);
+    leftCol->addLayout(entriesHeader);
     state.entries = new QTreeWidget;
-    state.entries->setColumnCount(2);
-    state.entries->setHeaderLabels({"Name", "Type"});
-    state.entries->setColumnWidth(0, 160);
+    state.entries->setColumnCount(3);
+    state.entries->setHeaderLabels({"Name", "Type", "Persona"});
+    state.entries->setColumnWidth(0, 150);
     leftCol->addWidget(state.entries);
     split->addLayout(leftCol, 1);
 
@@ -636,6 +740,8 @@ int main(int argc, char** argv) {
     QObject::connect(btnDelEntry, &QPushButton::clicked, [&state] { state.delete_entry(); });
     QObject::connect(state.entries, &QTreeWidget::currentItemChanged,
                      [&state] { state.refresh_fields(); });
+    QObject::connect(state.axisSelect, &QComboBox::currentIndexChanged,
+                     [&state] { state.refresh_entries(); });
     QObject::connect(btnAddField, &QPushButton::clicked, [&state] { state.add_field(); });
     QObject::connect(btnEditField, &QPushButton::clicked, [&state] { state.edit_field(); });
     QObject::connect(btnCopy, &QPushButton::clicked, [&state] { state.copy_value(); });
