@@ -5,10 +5,12 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <QApplication>
 #include <QByteArray>
+#include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
 #include <QDialog>
@@ -25,6 +27,7 @@
 #include <QPushButton>
 #include <QString>
 #include <QTimer>
+#include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -116,11 +119,45 @@ std::optional<FieldInput> ask_field(QWidget* parent) {
     return FieldInput{label->text(), type->currentText(), value->text(), notes->text()};
 }
 
+struct EntryInput {
+    QString label;
+    QString type;
+    bool under_selected;
+};
+
+// Modal "Add Entry" dialog: label, entry_type, and whether to nest under the selection.
+std::optional<EntryInput> ask_entry(QWidget* parent, bool has_selection, const QString& sel_label) {
+    QDialog dialog(parent);
+    dialog.setWindowTitle("Add Entry");
+    auto* form = new QFormLayout(&dialog);
+
+    auto* label = new QLineEdit;
+    auto* type = new QComboBox;
+    type->addItems({"service", "persona", "account", "child"});
+    auto* under = new QCheckBox(has_selection ? ("Add under: " + sel_label)
+                                              : "Add under selected entry");
+    under->setEnabled(has_selection);
+
+    form->addRow("Label:", label);
+    form->addRow("Type:", type);
+    form->addRow("", under);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    form->addRow(buttons);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted || label->text().isEmpty()) {
+        return std::nullopt;
+    }
+    return EntryInput{label->text(), type->currentText(), under->isChecked()};
+}
+
 // First-cut GUI state. Lambdas wire the signals, so no QObject subclass / moc yet.
 struct App {
     std::optional<Vault> vault;
     QMainWindow* window = nullptr;
-    QListWidget* entries = nullptr;
+    QTreeWidget* entries = nullptr;
     QListWidget* fields = nullptr;
     QLabel* fieldHeader = nullptr;
     QLabel* status = nullptr;
@@ -132,7 +169,7 @@ struct App {
         if (!it) {
             return std::nullopt;
         }
-        return it->data(Qt::UserRole).toLongLong();
+        return it->data(0, Qt::UserRole).toLongLong();
     }
 
     std::optional<std::int64_t> current_field_id() const {
@@ -166,11 +203,31 @@ struct App {
             set_status("Failed to read entries: " + error_text(list.error()));
             return;
         }
+        // Build the tree: create all items first, then parent them (a child may precede its
+        // parent in id order, and a tombstoned parent leaves its children at the root).
+        std::unordered_map<std::int64_t, QTreeWidgetItem*> by_id;
         for (const auto& e : *list) {
-            auto* item = new QListWidgetItem(QString::fromStdString(e.label));
-            item->setData(Qt::UserRole, static_cast<qlonglong>(e.id));
-            entries->addItem(item);
+            auto* item = new QTreeWidgetItem;
+            item->setText(0, QString::fromStdString(e.label));
+            item->setText(1, QString::fromStdString(e.entry_type));
+            item->setData(0, Qt::UserRole, static_cast<qlonglong>(e.id));
+            by_id[e.id] = item;
         }
+        for (const auto& e : *list) {
+            auto* item = by_id[e.id];
+            QTreeWidgetItem* parent = nullptr;
+            if (e.parent_id) {
+                if (auto it = by_id.find(*e.parent_id); it != by_id.end()) {
+                    parent = it->second;
+                }
+            }
+            if (parent) {
+                parent->addChild(item);
+            } else {
+                entries->addTopLevelItem(item);
+            }
+        }
+        entries->expandAll();
         set_status(QString("Vault open — %1 entr%2.")
                        .arg(list->size())
                        .arg(list->size() == 1 ? "y" : "ies"));
@@ -183,7 +240,7 @@ struct App {
             fieldHeader->setText("Fields");
             return;
         }
-        fieldHeader->setText("Fields — " + entries->currentItem()->text());
+        fieldHeader->setText("Fields — " + entries->currentItem()->text(0));
         auto list = vault->list_fields(*id);
         if (!list) {
             set_status("Failed to read fields: " + error_text(list.error()));
@@ -242,15 +299,19 @@ struct App {
             QMessageBox::information(window, "No vault", "Open or create a vault first.");
             return;
         }
-        bool ok = false;
-        const QString label =
-            QInputDialog::getText(window, "Add Entry", "Label:", QLineEdit::Normal, "", &ok);
-        if (!ok || label.isEmpty()) {
+        const auto selected = current_entry_id();
+        const QString sel_label =
+            entries->currentItem() ? entries->currentItem()->text(0) : QString();
+        auto in = ask_entry(window, selected.has_value(), sel_label);
+        if (!in) {
             return;
         }
         Entry e;
-        e.entry_type = "service";
-        e.label = label.toStdString();
+        e.entry_type = in->type.toStdString();
+        e.label = in->label.toStdString();
+        if (in->under_selected && selected) {
+            e.parent_id = *selected;
+        }
         auto added = vault->add_entry(e);
         if (!added) {
             QMessageBox::warning(window, "Add failed", error_text(added.error()));
@@ -265,7 +326,9 @@ struct App {
             return;
         }
         if (QMessageBox::question(window, "Delete entry",
-                                  "Delete the selected entry?") != QMessageBox::Yes) {
+                                  "Delete the selected entry?\n(Recoverable — it is soft-deleted.)",
+                                  QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+            != QMessageBox::Yes) {
             return;
         }
         if (auto r = vault->delete_entry(*id); !r) {
@@ -355,6 +418,14 @@ struct App {
         if (!vault || !id) {
             return;
         }
+        auto* item = fields->currentItem();
+        const QString name = item ? item->text() : QString("this field");
+        if (QMessageBox::question(window, "Delete field",
+                                  "Delete \"" + name + "\"?\n(Recoverable — it is soft-deleted.)",
+                                  QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+            != QMessageBox::Yes) {
+            return;
+        }
         if (auto r = vault->delete_field(*id); !r) {
             QMessageBox::warning(window, "Delete failed", error_text(r.error()));
             return;
@@ -425,7 +496,10 @@ int main(int argc, char** argv) {
 
     auto* leftCol = new QVBoxLayout;
     leftCol->addWidget(new QLabel("Entries"));
-    state.entries = new QListWidget;
+    state.entries = new QTreeWidget;
+    state.entries->setColumnCount(2);
+    state.entries->setHeaderLabels({"Name", "Type"});
+    state.entries->setColumnWidth(0, 160);
     leftCol->addWidget(state.entries);
     split->addLayout(leftCol, 1);
 
@@ -461,7 +535,7 @@ int main(int argc, char** argv) {
     QObject::connect(btnOpen, &QPushButton::clicked, [&state] { state.open_vault(); });
     QObject::connect(btnAddEntry, &QPushButton::clicked, [&state] { state.add_entry(); });
     QObject::connect(btnDelEntry, &QPushButton::clicked, [&state] { state.delete_entry(); });
-    QObject::connect(state.entries, &QListWidget::currentItemChanged,
+    QObject::connect(state.entries, &QTreeWidget::currentItemChanged,
                      [&state] { state.refresh_fields(); });
     QObject::connect(btnAddField, &QPushButton::clicked, [&state] { state.add_field(); });
     QObject::connect(btnCopy, &QPushButton::clicked, [&state] { state.copy_value(); });
