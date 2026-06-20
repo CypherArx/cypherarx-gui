@@ -81,10 +81,10 @@ struct FieldInput {
     QString notes;
 };
 
-// Modal "Add Field" dialog with a built-in password generator.
-std::optional<FieldInput> ask_field(QWidget* parent) {
+// Modal Add/Edit Field dialog with a built-in password generator. `prefill` != nullptr edits.
+std::optional<FieldInput> ask_field(QWidget* parent, const FieldInput* prefill = nullptr) {
     QDialog dialog(parent);
-    dialog.setWindowTitle("Add Field");
+    dialog.setWindowTitle(prefill ? "Edit Field" : "Add Field");
     auto* form = new QFormLayout(&dialog);
 
     auto* label = new QLineEdit;
@@ -113,6 +113,16 @@ std::optional<FieldInput> ask_field(QWidget* parent) {
         }
     });
 
+    if (prefill) {
+        label->setText(prefill->label);
+        const int idx = type->findText(prefill->type);
+        if (idx >= 0) {
+            type->setCurrentIndex(idx);
+        }
+        value->setText(prefill->value);
+        notes->setText(prefill->notes);
+    }
+
     if (dialog.exec() != QDialog::Accepted || label->text().isEmpty()) {
         return std::nullopt;
     }
@@ -125,22 +135,34 @@ struct EntryInput {
     bool under_selected;
 };
 
-// Modal "Add Entry" dialog: label, entry_type, and whether to nest under the selection.
-std::optional<EntryInput> ask_entry(QWidget* parent, bool has_selection, const QString& sel_label) {
+// Modal Add/Edit Entry dialog: label, entry_type, and (add only) whether to nest under the
+// selection. `prefill` != nullptr edits an existing entry (re-parenting is not offered here).
+std::optional<EntryInput> ask_entry(QWidget* parent, bool has_selection, const QString& sel_label,
+                                    const EntryInput* prefill = nullptr) {
     QDialog dialog(parent);
-    dialog.setWindowTitle("Add Entry");
+    dialog.setWindowTitle(prefill ? "Edit Entry" : "Add Entry");
     auto* form = new QFormLayout(&dialog);
 
     auto* label = new QLineEdit;
     auto* type = new QComboBox;
     type->addItems({"service", "persona", "account", "child"});
-    auto* under = new QCheckBox(has_selection ? ("Add under: " + sel_label)
-                                              : "Add under selected entry");
-    under->setEnabled(has_selection);
 
     form->addRow("Label:", label);
     form->addRow("Type:", type);
-    form->addRow("", under);
+
+    QCheckBox* under = nullptr;
+    if (prefill) {
+        label->setText(prefill->label);
+        const int idx = type->findText(prefill->type);
+        if (idx >= 0) {
+            type->setCurrentIndex(idx);
+        }
+    } else {
+        under = new QCheckBox(has_selection ? ("Add under: " + sel_label)
+                                            : "Add under selected entry");
+        under->setEnabled(has_selection);
+        form->addRow("", under);
+    }
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     form->addRow(buttons);
@@ -150,7 +172,7 @@ std::optional<EntryInput> ask_entry(QWidget* parent, bool has_selection, const Q
     if (dialog.exec() != QDialog::Accepted || label->text().isEmpty()) {
         return std::nullopt;
     }
-    return EntryInput{label->text(), type->currentText(), under->isChecked()};
+    return EntryInput{label->text(), type->currentText(), under && under->isChecked()};
 }
 
 // First-cut GUI state. Lambdas wire the signals, so no QObject subclass / moc yet.
@@ -320,6 +342,34 @@ struct App {
         refresh_entries();
     }
 
+    void edit_entry() {
+        auto id = current_entry_id();
+        if (!vault || !id) {
+            QMessageBox::information(window, "No entry", "Select an entry first.");
+            return;
+        }
+        auto cur = vault->get_entry(*id);
+        if (!cur) {
+            QMessageBox::warning(window, "Edit failed", error_text(cur.error()));
+            return;
+        }
+        EntryInput pre{QString::fromStdString(cur->label),
+                       QString::fromStdString(cur->entry_type), false};
+        auto in = ask_entry(window, false, QString(), &pre);
+        if (!in) {
+            return;
+        }
+        // Keep id/uuid/parent_id and the other text columns; only label & type are edited here.
+        Entry e = *cur;
+        e.label = in->label.toStdString();
+        e.entry_type = in->type.toStdString();
+        if (auto r = vault->update_entry(e); !r) {
+            QMessageBox::warning(window, "Edit failed", error_text(r.error()));
+            return;
+        }
+        refresh_entries();
+    }
+
     void delete_entry() {
         auto id = current_entry_id();
         if (!vault || !id) {
@@ -353,6 +403,50 @@ struct App {
                                       value, in->notes.toStdString());
         if (!added) {
             QMessageBox::warning(window, "Add field failed", error_text(added.error()));
+            return;
+        }
+        refresh_fields();
+    }
+
+    void edit_field() {
+        auto id = current_field_id();
+        auto eid = current_entry_id();
+        if (!vault || !id || !eid) {
+            QMessageBox::information(window, "No field", "Select a field first.");
+            return;
+        }
+        // list_fields gives label/type/notes; the secret value is fetched on demand.
+        auto fields = vault->list_fields(*eid);
+        if (!fields) {
+            QMessageBox::warning(window, "Edit failed", error_text(fields.error()));
+            return;
+        }
+        const cypherarx::Field* cur = nullptr;
+        for (const auto& f : *fields) {
+            if (f.id == *id) {
+                cur = &f;
+                break;
+            }
+        }
+        if (!cur) {
+            return;
+        }
+        auto val = vault->field_value(*id);
+        if (!val) {
+            QMessageBox::warning(window, "Edit failed", error_text(val.error()));
+            return;
+        }
+        FieldInput pre{QString::fromStdString(cur->label), QString::fromStdString(cur->field_type),
+                       secret_to_qstring(*val), QString::fromStdString(cur->notes)};
+        auto in = ask_field(window, &pre);
+        if (!in) {
+            return;
+        }
+        const auto value = to_bytes(in->value);
+        if (auto r = vault->update_field(*id, in->label.toStdString(), in->type.toStdString(),
+                                         value, in->notes.toStdString());
+            !r) {
+            QMessageBox::warning(window, "Edit failed", error_text(r.error()));
             return;
         }
         refresh_fields();
@@ -484,10 +578,12 @@ int main(int argc, char** argv) {
     auto* btnNew = new QPushButton("New Vault");
     auto* btnOpen = new QPushButton("Open Vault");
     auto* btnAddEntry = new QPushButton("Add Entry");
+    auto* btnEditEntry = new QPushButton("Edit Entry");
     auto* btnDelEntry = new QPushButton("Delete Entry");
     topRow->addWidget(btnNew);
     topRow->addWidget(btnOpen);
     topRow->addWidget(btnAddEntry);
+    topRow->addWidget(btnEditEntry);
     topRow->addWidget(btnDelEntry);
     topRow->addStretch();
     root->addLayout(topRow);
@@ -510,10 +606,12 @@ int main(int argc, char** argv) {
     rightCol->addWidget(state.fields);
     auto* fieldButtons = new QHBoxLayout;
     auto* btnAddField = new QPushButton("Add Field");
+    auto* btnEditField = new QPushButton("Edit Field");
     auto* btnCopy = new QPushButton("Copy Value");
     auto* btnTotp = new QPushButton("Show TOTP");
     auto* btnDelField = new QPushButton("Delete Field");
     fieldButtons->addWidget(btnAddField);
+    fieldButtons->addWidget(btnEditField);
     fieldButtons->addWidget(btnCopy);
     fieldButtons->addWidget(btnTotp);
     fieldButtons->addWidget(btnDelField);
@@ -534,10 +632,12 @@ int main(int argc, char** argv) {
     QObject::connect(btnNew, &QPushButton::clicked, [&state] { state.new_vault(); });
     QObject::connect(btnOpen, &QPushButton::clicked, [&state] { state.open_vault(); });
     QObject::connect(btnAddEntry, &QPushButton::clicked, [&state] { state.add_entry(); });
+    QObject::connect(btnEditEntry, &QPushButton::clicked, [&state] { state.edit_entry(); });
     QObject::connect(btnDelEntry, &QPushButton::clicked, [&state] { state.delete_entry(); });
     QObject::connect(state.entries, &QTreeWidget::currentItemChanged,
                      [&state] { state.refresh_fields(); });
     QObject::connect(btnAddField, &QPushButton::clicked, [&state] { state.add_field(); });
+    QObject::connect(btnEditField, &QPushButton::clicked, [&state] { state.edit_field(); });
     QObject::connect(btnCopy, &QPushButton::clicked, [&state] { state.copy_value(); });
     QObject::connect(btnTotp, &QPushButton::clicked, [&state] { state.show_totp(); });
     QObject::connect(btnDelField, &QPushButton::clicked, [&state] { state.delete_field(); });
