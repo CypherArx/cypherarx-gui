@@ -467,6 +467,112 @@ struct App {
         refresh_entries();
     }
 
+    // Per-entry dialog to view/add/delete login methods (the reference-link layer, §10.1.1).
+    void manage_login_methods() {
+        auto id = current_entry_id();
+        if (!vault || !id) {
+            QMessageBox::information(window, "No entry", "Select an entry first.");
+            return;
+        }
+        auto all = vault->list_entries();  // for the "via" picker and name lookup
+        if (!all) {
+            QMessageBox::warning(window, "Login methods", error_text(all.error()));
+            return;
+        }
+        std::unordered_map<std::int64_t, QString> name_by_id;
+        for (const auto& e : *all) {
+            name_by_id[e.id] = QString::fromStdString(e.label);
+        }
+
+        QDialog dialog(window);
+        dialog.setWindowTitle("Login Methods — " + entries->currentItem()->text(0));
+        auto* outer = new QVBoxLayout(&dialog);
+        auto* list = new QListWidget;
+        outer->addWidget(list);
+
+        auto reload = [&] {
+            list->clear();
+            auto ms = vault->list_login_methods(*id);
+            if (!ms) {
+                return;
+            }
+            for (const auto& m : *ms) {
+                QString text = QString::fromStdString(m.method_type);
+                if (m.linked_entry_id) {
+                    auto it = name_by_id.find(*m.linked_entry_id);
+                    text += "  →  " + (it != name_by_id.end()
+                                           ? it->second
+                                           : QString("entry %1").arg(*m.linked_entry_id));
+                }
+                if (!m.notes.empty()) {
+                    text += "   (" + QString::fromStdString(m.notes) + ")";
+                }
+                auto* item = new QListWidgetItem(text);
+                item->setData(Qt::UserRole, static_cast<qlonglong>(m.id));
+                list->addItem(item);
+            }
+        };
+        reload();
+
+        auto* addRow = new QHBoxLayout;
+        auto* methodBox = new QComboBox;
+        methodBox->addItems(
+            {"email", "google", "github", "apple", "twitter", "line", "facebook", "other"});
+        auto* viaBox = new QComboBox;
+        viaBox->addItem("(direct)", QVariant());
+        for (const auto& e : *all) {
+            if (e.entry_type == "account" || e.entry_type == "service") {
+                viaBox->addItem(QString::fromStdString(e.label), static_cast<qlonglong>(e.id));
+            }
+        }
+        auto* notesEdit = new QLineEdit;
+        notesEdit->setPlaceholderText("notes");
+        auto* addBtn = new QPushButton("Add");
+        addRow->addWidget(methodBox);
+        addRow->addWidget(new QLabel("via"));
+        addRow->addWidget(viaBox);
+        addRow->addWidget(notesEdit);
+        addRow->addWidget(addBtn);
+        outer->addLayout(addRow);
+
+        auto* btnRow = new QHBoxLayout;
+        auto* delBtn = new QPushButton("Delete selected");
+        auto* closeBtn = new QPushButton("Close");
+        btnRow->addWidget(delBtn);
+        btnRow->addStretch();
+        btnRow->addWidget(closeBtn);
+        outer->addLayout(btnRow);
+
+        QObject::connect(addBtn, &QPushButton::clicked, &dialog, [&] {
+            std::optional<std::int64_t> via;
+            if (const QVariant v = viaBox->currentData(); v.isValid()) {
+                via = v.toLongLong();
+            }
+            auto r = vault->add_login_method(*id, methodBox->currentText().toStdString(), via,
+                                             notesEdit->text().toStdString());
+            if (!r) {
+                QMessageBox::warning(&dialog, "Add failed", error_text(r.error()));
+                return;
+            }
+            notesEdit->clear();
+            reload();
+        });
+        QObject::connect(delBtn, &QPushButton::clicked, &dialog, [&] {
+            auto* it = list->currentItem();
+            if (!it) {
+                return;
+            }
+            if (auto r = vault->delete_login_method(it->data(Qt::UserRole).toLongLong()); !r) {
+                QMessageBox::warning(&dialog, "Delete failed", error_text(r.error()));
+                return;
+            }
+            reload();
+        });
+        QObject::connect(closeBtn, &QPushButton::clicked, &dialog, &QDialog::accept);
+        dialog.resize(440, 320);
+        dialog.exec();
+    }
+
     void delete_entry() {
         auto id = current_entry_id();
         if (!vault || !id) {
@@ -677,11 +783,13 @@ int main(int argc, char** argv) {
     auto* btnAddEntry = new QPushButton("Add Entry");
     auto* btnEditEntry = new QPushButton("Edit Entry");
     auto* btnDelEntry = new QPushButton("Delete Entry");
+    auto* btnLoginMethods = new QPushButton("Login Methods");
     topRow->addWidget(btnNew);
     topRow->addWidget(btnOpen);
     topRow->addWidget(btnAddEntry);
     topRow->addWidget(btnEditEntry);
     topRow->addWidget(btnDelEntry);
+    topRow->addWidget(btnLoginMethods);
     topRow->addStretch();
     root->addLayout(topRow);
 
@@ -738,6 +846,8 @@ int main(int argc, char** argv) {
     QObject::connect(btnAddEntry, &QPushButton::clicked, [&state] { state.add_entry(); });
     QObject::connect(btnEditEntry, &QPushButton::clicked, [&state] { state.edit_entry(); });
     QObject::connect(btnDelEntry, &QPushButton::clicked, [&state] { state.delete_entry(); });
+    QObject::connect(btnLoginMethods, &QPushButton::clicked,
+                     [&state] { state.manage_login_methods(); });
     QObject::connect(state.entries, &QTreeWidget::currentItemChanged,
                      [&state] { state.refresh_fields(); });
     QObject::connect(state.axisSelect, &QComboBox::currentIndexChanged,
