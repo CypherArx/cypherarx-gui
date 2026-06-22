@@ -9,17 +9,21 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+if(MSVC)
+  add_compile_options(/utf-8)  # sources are UTF-8 (Japanese string literals)
+endif()
 
 # Build cypherarx-core (Qt-free) with the same toolchain as the GUI; no tests here.
 set(CYPHERARX_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/cypherarx-core)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(imgui CONFIG REQUIRED)
 
-add_executable(cypherarx_gui
-  src/main.cpp
+add_executable(cypherarx_gui src/main.cpp)
+target_link_libraries(cypherarx_gui PRIVATE
+  cypherarx_core
+  imgui::imgui
+  d3d11
+  dxgi
+  d3dcompiler
 )
-target_link_libraries(cypherarx_gui PRIVATE cypherarx_core Qt6::Widgets)
