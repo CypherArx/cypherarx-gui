@@ -2,7 +2,9 @@
 
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdarg>
+#include <numbers>
 #include <cstdio>
 #include <string_view>
 
@@ -368,6 +370,7 @@ void App::draw_status() {
 
 void App::draw_dialogs() {
     draw_password_dialog();
+    draw_busy_dialog();
     draw_entry_dialog();
     draw_field_dialog();
     draw_login_methods_dialog();
@@ -382,7 +385,7 @@ void App::draw_password_dialog() {
     }
     ImGui::TextUnformatted(d.mode == PasswordDialog::Mode::Create ? text::new_vault
                                                                    : text::open_vault);
-    ImGui::TextColored(cfg_.theme.muted_text, "%s", d.path.c_str());
+    ImGui::TextColored(cfg_.theme.muted_text, "%s", d.path_text.c_str());
     if (d.focus) {
         ImGui::SetKeyboardFocusHere();
         d.focus = false;
@@ -398,7 +401,7 @@ void App::draw_password_dialog() {
         if (d.password.empty()) {
             message(text::password_empty);
         } else {
-            unlock();
+            start_unlock();
             ImGui::CloseCurrentPopup();
         }
     } else if (done) {
@@ -406,6 +409,39 @@ void App::draw_password_dialog() {
         ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
+}
+
+void App::draw_busy_dialog() {
+    auto& job = unlock_job_;
+    if (!job.modal.begin()) {
+        return;
+    }
+    ImGui::TextUnformatted(job.mode == PasswordDialog::Mode::Create ? text::new_vault
+                                                                     : text::open_vault);
+    ImGui::TextColored(cfg_.theme.muted_text, "%s", job.path_text.c_str());
+    draw_spinner();
+    ImGui::SameLine();
+    ImGui::TextUnformatted(text::unlocking);
+    if (job.active() && job.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        finish_unlock(job.future.get());
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+}
+
+void App::draw_spinner() {
+    const float r = cfg_.theme.spinner_radius * platform::dpi_scale();
+    const ImVec2 pos = ImGui::GetCursorScreenPos();
+    const ImVec2 size(r * 2, r * 2);
+    ImGui::Dummy(size);
+    const ImVec2 center(pos.x + r, pos.y + r);
+    const float t = static_cast<float>(ImGui::GetTime()) * cfg_.theme.spinner_turns_per_second;
+    const float start = t * 2.0f * std::numbers::pi_v<float>;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->PathArcTo(center, r - cfg_.theme.spinner_thickness, start,
+                  start + 1.5f * std::numbers::pi_v<float>, 24);
+    dl->PathStroke(ImGui::GetColorU32(ImGuiCol_ButtonHovered), ImDrawFlags_None,
+                   cfg_.theme.spinner_thickness);
 }
 
 void App::draw_entry_dialog() {
@@ -567,6 +603,7 @@ void App::request_new_vault() {
         return;
     }
     password_dlg_.mode = PasswordDialog::Mode::Create;
+    password_dlg_.path_text = utf8(*path);
     password_dlg_.path = std::move(*path);
     password_dlg_.password.clear();
     password_dlg_.focus = true;
@@ -579,27 +616,45 @@ void App::request_open_vault() {
         return;
     }
     password_dlg_.mode = PasswordDialog::Mode::Open;
+    password_dlg_.path_text = utf8(*path);
     password_dlg_.path = std::move(*path);
     password_dlg_.password.clear();
     password_dlg_.focus = true;
     password_dlg_.modal.open();
 }
 
-void App::unlock() {
+void App::start_unlock() {
     auto& d = password_dlg_;
-    const auto pw = d.password.bytes();
-    auto result = d.mode == PasswordDialog::Mode::Create
-                      ? Vault::create(d.path, pw, cfg_.security.kdf_params())
-                      : Vault::open(d.path, pw);
+    auto& job = unlock_job_;
+    if (job.active()) {
+        return;
+    }
+    Secret pw(d.password.bytes());
     d.password.clear();
+    job.mode = d.mode;
+    job.path_text = d.path_text;
+    const bool create = d.mode == PasswordDialog::Mode::Create;
+    const KdfParams params = cfg_.security.kdf_params();
+    job.future = std::async(std::launch::async,
+                            [pw = std::move(pw), path = d.path, create, params]() mutable {
+                                auto r = create ? Vault::create(path, pw.bytes(), params)
+                                                : Vault::open(path, pw.bytes());
+                                pw = Secret();
+                                return r;
+                            });
+    job.modal.open();
+}
+
+void App::finish_unlock(std::expected<Vault, VaultError> result) {
+    auto& job = unlock_job_;
     if (!result) {
-        fail(d.mode == PasswordDialog::Mode::Create ? text::new_vault : text::open_vault,
+        fail(job.mode == PasswordDialog::Mode::Create ? text::new_vault : text::open_vault,
              result.error());
         return;
     }
     close_vault();
     vault_ = std::move(*result);
-    vault_path_ = d.path;
+    vault_path_ = job.path_text;
     reload_entries();
 }
 
@@ -966,6 +1021,11 @@ void App::delete_login_method() {
     }
     d.selected.reset();
     reload_login_methods();
+}
+
+std::string App::utf8(const std::filesystem::path& p) {
+    const std::u8string u = p.u8string();
+    return std::string(u.begin(), u.end());
 }
 
 void App::fail(const std::string& what, VaultError e) {

@@ -116,16 +116,6 @@ LRESULT WINAPI wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     return ::DefWindowProcW(hwnd, msg, wparam, lparam);
 }
 
-std::string to_utf8(const wchar_t* w) {
-    const int n = ::WideCharToMultiByte(CP_UTF8, 0, w, -1, nullptr, 0, nullptr, nullptr);
-    if (n <= 1) {
-        return {};
-    }
-    std::string out(static_cast<std::size_t>(n - 1), '\0');
-    ::WideCharToMultiByte(CP_UTF8, 0, w, -1, out.data(), n, nullptr, nullptr);
-    return out;
-}
-
 std::wstring to_wide(const char* s) {
     const int n = ::MultiByteToWideChar(CP_UTF8, 0, s, -1, nullptr, 0);
     if (n <= 1) {
@@ -136,8 +126,8 @@ std::wstring to_wide(const char* s) {
     return out;
 }
 
-std::optional<std::string> file_dialog(bool save, const wchar_t* filter,
-                                       const char* default_extension) {
+std::optional<std::filesystem::path> file_dialog(bool save, const wchar_t* filter,
+                                                 const char* default_extension) {
     wchar_t buf[MAX_PATH * 4] = L"";
     const std::wstring ext = to_wide(default_extension[0] == '.' ? default_extension + 1
                                                                  : default_extension);
@@ -154,7 +144,7 @@ std::optional<std::string> file_dialog(bool save, const wchar_t* filter,
     if (!ok) {
         return std::nullopt;
     }
-    return to_utf8(buf);
+    return std::filesystem::path(buf);
 }
 
 } // namespace
@@ -234,11 +224,13 @@ void end_frame(const ImVec4& clear_color) {
     g.swapchain->Present(1, 0);
 }
 
-std::optional<std::string> pick_open_file(const wchar_t* filter, const char* default_extension) {
+std::optional<std::filesystem::path> pick_open_file(const wchar_t* filter,
+                                                    const char* default_extension) {
     return file_dialog(false, filter, default_extension);
 }
 
-std::optional<std::string> pick_save_file(const wchar_t* filter, const char* default_extension) {
+std::optional<std::filesystem::path> pick_save_file(const wchar_t* filter,
+                                                    const char* default_extension) {
     return file_dialog(true, filter, default_extension);
 }
 

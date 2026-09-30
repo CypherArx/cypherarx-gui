@@ -32,6 +32,9 @@ struct Theme {
     ImVec4 warning_text = ImVec4(0.95f, 0.70f, 0.30f, 1.0f);
     ImVec4 error_text = ImVec4(0.95f, 0.40f, 0.40f, 1.0f);
     float left_pane_ratio = 0.45f;
+    float spinner_radius = 12.0f;
+    float spinner_thickness = 3.0f;
+    float spinner_turns_per_second = 1.0f;
 };
 
 struct ClipboardConfig {

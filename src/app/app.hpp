@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
+#include <filesystem>
 #include <functional>
+#include <future>
 #include <optional>
 #include <string>
 #include <utility>
@@ -28,10 +31,19 @@ struct PasswordDialog {
     enum class Mode { Create, Open };
     Modal modal{"Master password###password"};
     Mode mode = Mode::Open;
-    std::string path;
+    std::filesystem::path path;
+    std::string path_text;
     SecretBuffer password;
     bool focus = false;
     explicit PasswordDialog(std::size_t cap) : password(cap) {}
+};
+
+struct UnlockJob {
+    Modal modal{"Please wait###busy"};
+    std::future<std::expected<Vault, VaultError>> future;
+    PasswordDialog::Mode mode = PasswordDialog::Mode::Open;
+    std::string path_text;
+    bool active() const { return future.valid(); }
 };
 
 struct EntryDialog {
@@ -102,6 +114,8 @@ private:
     void draw_status();
     void draw_dialogs();
     void draw_password_dialog();
+    void draw_busy_dialog();
+    void draw_spinner();
     void draw_entry_dialog();
     void draw_field_dialog();
     void draw_login_methods_dialog();
@@ -111,7 +125,8 @@ private:
     void request_new_vault();
     void request_open_vault();
     void close_vault();
-    void unlock();
+    void start_unlock();
+    void finish_unlock(std::expected<Vault, VaultError> result);
 
     void reload_entries();
     void reload_fields();
@@ -134,6 +149,7 @@ private:
     void add_login_method();
     void delete_login_method();
 
+    static std::string utf8(const std::filesystem::path& p);
     void fail(const std::string& what, VaultError e);
     void message(const std::string& text);
     const Entry* selected_entry() const;
@@ -153,6 +169,7 @@ private:
     TotpView totp_;
 
     PasswordDialog password_dlg_;
+    UnlockJob unlock_job_;
     EntryDialog entry_dlg_;
     FieldDialog field_dlg_;
     LoginMethodsDialog login_dlg_;

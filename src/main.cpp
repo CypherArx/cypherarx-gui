@@ -23,7 +23,7 @@ int run_selftest() {
     fs::remove(path, ec);
 
     const std::vector<std::uint8_t> pw = {'p', 'w'};
-    auto v = Vault::create(path.string(), pw, cypherarx::gui::config().security.kdf_params_selftest());
+    auto v = Vault::create(path, pw, cypherarx::gui::config().security.kdf_params_selftest());
     if (!v) {
         std::cerr << "selftest: create failed\n";
         return 1;
