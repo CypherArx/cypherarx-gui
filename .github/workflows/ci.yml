@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: build & selftest (MSVC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.CORE_SUBMODULE_TOKEN }}
+
+      - name: Set up CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        shell: bash
+        run: VCPKG_ROOT="$VCPKG_INSTALLATION_ROOT" cmake --preset default
+
+      - name: Build
+        shell: bash
+        run: VCPKG_ROOT="$VCPKG_INSTALLATION_ROOT" cmake --build --preset default
+
+      - name: Selftest (headless)
+        shell: bash
+        run: ./build/cypherarx_gui.exe --selftest
+
+  asan:
+    name: build & selftest (MSVC AddressSanitizer)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.CORE_SUBMODULE_TOKEN }}
+
+      - name: Set up CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure (ASan, RelWithDebInfo)
+        shell: bash
+        run: >-
+          VCPKG_ROOT="$VCPKG_INSTALLATION_ROOT" cmake --preset default
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_CXX_FLAGS="/fsanitize=address"
+
+      - name: Build
+        shell: bash
+        run: VCPKG_ROOT="$VCPKG_INSTALLATION_ROOT" cmake --build --preset default
+
+      - name: Selftest (headless)
+        shell: bash
+        run: ./build/cypherarx_gui.exe --selftest
