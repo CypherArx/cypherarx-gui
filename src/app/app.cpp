@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <cstdarg>
@@ -164,8 +165,14 @@ void App::draw() {
     ImGui::Separator();
 
     const float status_h = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
-    const float left_w = ImGui::GetContentRegionAvail().x * cfg_.theme.left_pane_ratio;
-    if (ImGui::BeginChild("entries_pane", ImVec2(left_w, -status_h))) {
+    const float total_w = ImGui::GetContentRegionAvail().x;
+    if (ImGui::BeginChild("sidebar", ImVec2(total_w * cfg_.theme.sidebar_ratio, -status_h),
+                          ImGuiChildFlags_Borders)) {
+        draw_sidebar();
+    }
+    ImGui::EndChild();
+    ImGui::SameLine();
+    if (ImGui::BeginChild("entries_pane", ImVec2(total_w * cfg_.theme.center_ratio, -status_h))) {
         draw_entries_pane();
     }
     ImGui::EndChild();
@@ -203,16 +210,70 @@ void App::draw_toolbar() {
     }
 }
 
-void App::draw_entries_pane() {
-    ImGui::TextUnformatted(text::entries);
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 9);
-    int axis = axis_ == Axis::Persona ? 1 : 0;
-    const char* axes[] = {text::axis_service, text::axis_persona};
-    if (ImGui::Combo(text::view, &axis, axes, 2)) {
-        axis_ = axis == 1 ? Axis::Persona : Axis::Service;
-        reload_entries();
+void App::draw_sidebar() {
+    ImGui::BeginDisabled(!vault_);
+    ImGui::SeparatorText(text::view);
+    if (ImGui::Selectable(text::axis_service, axis_ == Axis::Service)) {
+        axis_ = Axis::Service;
+        rebuild_projection();
     }
+    if (ImGui::Selectable(text::axis_persona, axis_ == Axis::Persona)) {
+        axis_ = Axis::Persona;
+        rebuild_projection();
+    }
+
+    ImGui::SeparatorText(text::filters);
+    if (ImGui::Checkbox(text::favorites_only, &filter_.favorites_only)) {
+        rebuild_projection();
+    }
+    ImGui::BeginDisabled(!filter_.active());
+    if (ImGui::SmallButton(text::clear_filters)) {
+        filter_.clear();
+        rebuild_projection();
+    }
+    ImGui::EndDisabled();
+
+    ImGui::SeparatorText(text::categories);
+    ImGui::PushID("cat_filter");
+    if (ImGui::Selectable(text::all, !filter_.category)) {
+        filter_.category.reset();
+        rebuild_projection();
+    }
+    for (const auto& [id, name] : flatten_categories(categories_, cfg_.category_indent)) {
+        ImGui::PushID(static_cast<int>(id));
+        if (ImGui::Selectable(name.c_str(), filter_.category == id)) {
+            filter_.category = filter_.category == id ? std::nullopt : std::optional(id);
+            rebuild_projection();
+        }
+        ImGui::PopID();
+    }
+    ImGui::PopID();
+
+    ImGui::SeparatorText(text::tags);
+    ImGui::PushID("tag_filter");
+    if (ImGui::Selectable(text::all, !filter_.tag)) {
+        filter_.tag.reset();
+        rebuild_projection();
+    }
+    for (const auto& t : tags_) {
+        ImGui::PushID(static_cast<int>(t.id));
+        if (ImGui::Selectable(t.name.c_str(), filter_.tag == t.id)) {
+            filter_.tag = filter_.tag == t.id ? std::nullopt : std::optional(t.id);
+            rebuild_projection();
+        }
+        ImGui::PopID();
+    }
+    ImGui::PopID();
+    ImGui::EndDisabled();
+}
+
+void App::draw_entries_pane() {
+    ImGui::BeginDisabled(!vault_);
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::InputTextWithHint("##search", text::search_hint, &filter_.query)) {
+        rebuild_projection();
+    }
+    ImGui::EndDisabled();
 
     ImGui::BeginDisabled(!vault_);
     if (ImGui::Button(text::add_entry)) {
@@ -250,6 +311,11 @@ void App::draw_entries_pane() {
         for (const auto id : proj_.roots) {
             draw_tree_node(id);
         }
+        if (vault_ && proj_.roots.empty() && proj_.filtered) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextColored(cfg_.theme.muted_text, "%s", text::no_matches);
+        }
         ImGui::EndTable();
     }
 }
@@ -271,6 +337,10 @@ void App::draw_tree_node(std::int64_t id) {
         flags |= ImGuiTreeNodeFlags_Selected;
     }
 
+    const bool dim = !proj_.is_match(id);
+    if (dim) {
+        ImGui::PushStyleColor(ImGuiCol_Text, cfg_.theme.muted_text);
+    }
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     const bool open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<std::intptr_t>(id)),
@@ -284,6 +354,9 @@ void App::draw_tree_node(std::int64_t id) {
     ImGui::TableNextColumn();
     const std::string cross = proj_.label_of(proj_.cross_parent(*e, axis_));
     ImGui::TextUnformatted(cross.c_str());
+    if (dim) {
+        ImGui::PopStyleColor();
+    }
 
     if (open && has_kids) {
         for (const auto child : kids->second) {
@@ -296,9 +369,26 @@ void App::draw_tree_node(std::int64_t id) {
 void App::draw_fields_pane() {
     const Entry* e = selected_entry();
     if (e) {
-        ImGui::Text("%s: %s", text::fields, e->label.c_str());
+        ImGui::Text("%s%s", e->is_favorite ? text::favorite_marker : "", e->label.c_str());
+        std::string detail = e->entry_type;
+        for (const auto& c : categories_) {
+            if (e->category_id && c.id == *e->category_id) {
+                detail += "  |  " + c.name;
+            }
+        }
+        if (const auto it = tags_by_entry_.find(e->id); it != tags_by_entry_.end()) {
+            for (const auto tag_id : it->second) {
+                for (const auto& t : tags_) {
+                    if (t.id == tag_id) {
+                        detail += "  #" + t.name;
+                    }
+                }
+            }
+        }
+        ImGui::TextColored(cfg_.theme.muted_text, "%s", detail.c_str());
     } else {
         ImGui::TextUnformatted(text::fields);
+        ImGui::TextColored(cfg_.theme.muted_text, "%s", text::select_entry_first);
     }
 
     ImGui::BeginDisabled(!e);
@@ -810,6 +900,10 @@ void App::close_vault() {
     vault_.reset();
     vault_path_.clear();
     entries_.clear();
+    categories_.clear();
+    tags_.clear();
+    tags_by_entry_.clear();
+    filter_.clear();
     proj_ = {};
     fields_.clear();
     selected_entry_.reset();
@@ -829,14 +923,54 @@ void App::reload_entries() {
         return;
     }
     entries_ = std::move(*list);
-    proj_ = Projection::build(entries_, axis_);
     reload_organization();
+    tags_by_entry_.clear();
+    if (auto pairs = vault_->list_entry_tags()) {
+        for (const auto& [entry_id, tag_id] : *pairs) {
+            tags_by_entry_[entry_id].push_back(tag_id);
+        }
+    } else {
+        fail(text::tags, pairs.error());
+    }
+    rebuild_projection();
     if (selected_entry_ && !proj_.find(*selected_entry_)) {
         selected_entry_.reset();
     }
-    status_ = format(text::status_open_fmt, entries_.size(),
-                     axis_ == Axis::Persona ? text::axis_persona : text::axis_service);
     reload_fields();
+}
+
+void App::rebuild_projection() {
+    EntryPredicate match;
+    if (filter_.active()) {
+        std::unordered_set<std::int64_t> subtree;
+        if (filter_.category) {
+            subtree = category_subtree(categories_, *filter_.category);
+        }
+        match = [this, subtree = std::move(subtree)](const Entry& e) {
+            if (filter_.favorites_only && !e.is_favorite) {
+                return false;
+            }
+            if (filter_.category && !(e.category_id && subtree.contains(*e.category_id))) {
+                return false;
+            }
+            if (filter_.tag) {
+                const auto it = tags_by_entry_.find(e.id);
+                if (it == tags_by_entry_.end() || !std::ranges::contains(it->second, *filter_.tag)) {
+                    return false;
+                }
+            }
+            if (!filter_.query.empty() && !contains_ci(e.label, filter_.query) &&
+                !contains_ci(e.display_name, filter_.query) && !contains_ci(e.url, filter_.query)) {
+                return false;
+            }
+            return true;
+        };
+    }
+    proj_ = Projection::build(entries_, axis_, match);
+    const char* axis_name = axis_ == Axis::Persona ? text::axis_persona : text::axis_service;
+    status_ = proj_.filtered
+                  ? format(text::status_filtered_fmt, proj_.visible_count(), entries_.size(), axis_name)
+                  : format(text::status_open_fmt, entries_.size(), axis_name);
 }
 
 void App::reload_organization() {

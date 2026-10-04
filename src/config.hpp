@@ -12,8 +12,8 @@ namespace cypherarx::gui {
 struct WindowConfig {
     const wchar_t* class_name = L"CypherArx";
     const wchar_t* title = L"CypherArx";
-    int width = 1000;
-    int height = 660;
+    int width = 1240;
+    int height = 720;
     bool dpi_aware = true;
 };
 
@@ -31,7 +31,10 @@ struct Theme {
     ImVec4 muted_text = ImVec4(0.60f, 0.60f, 0.65f, 1.0f);
     ImVec4 warning_text = ImVec4(0.95f, 0.70f, 0.30f, 1.0f);
     ImVec4 error_text = ImVec4(0.95f, 0.40f, 0.40f, 1.0f);
-    float left_pane_ratio = 0.45f;
+    float sidebar_ratio = 0.20f;
+    float center_ratio = 0.42f;
+    float frame_rounding = 4.0f;
+    float window_padding = 10.0f;
     float spinner_radius = 12.0f;
     float spinner_thickness = 3.0f;
     float spinner_turns_per_second = 1.0f;

@@ -7,6 +7,7 @@
 #include <future>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -124,6 +125,7 @@ public:
 
 private:
     void draw_toolbar();
+    void draw_sidebar();
     void draw_entries_pane();
     void draw_tree_node(std::int64_t id);
     void draw_fields_pane();
@@ -147,6 +149,7 @@ private:
     void finish_unlock(std::expected<Vault, VaultError> result);
 
     void reload_entries();
+    void rebuild_projection();
     void reload_organization();
     void reload_fields();
     void select_entry(std::optional<std::int64_t> id);
@@ -190,8 +193,10 @@ private:
     std::vector<Entry> entries_;
     std::vector<Category> categories_;
     std::vector<Tag> tags_;
+    std::unordered_map<std::int64_t, std::vector<std::int64_t>> tags_by_entry_;
     Projection proj_;
     Axis axis_ = Axis::Service;
+    Filter filter_;
     std::optional<std::int64_t> selected_entry_;
     std::vector<Field> fields_;
     std::optional<std::int64_t> selected_field_;

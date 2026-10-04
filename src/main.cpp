@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
         std::cerr << "Failed to create the window / D3D11 device\n";
         return 1;
     }
-    gui::platform::create_imgui_context(cfg.font);
+    gui::platform::create_imgui_context(cfg.font, cfg.theme);
     gui::platform::attach_imgui();
 
     {

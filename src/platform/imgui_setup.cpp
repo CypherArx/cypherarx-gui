@@ -27,7 +27,7 @@ bool load_font(const FontConfig& font, float scale) {
 
 } // namespace
 
-bool create_imgui_context(const FontConfig& font) {
+bool create_imgui_context(const FontConfig& font, const Theme& theme) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -36,7 +36,12 @@ bool create_imgui_context(const FontConfig& font) {
     const float scale = dpi_scale();
     const bool cjk = load_font(font, scale);
     ImGui::StyleColorsDark();
-    ImGui::GetStyle().ScaleAllSizes(scale);
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.FrameRounding = theme.frame_rounding;
+    style.ChildRounding = theme.frame_rounding;
+    style.PopupRounding = theme.frame_rounding;
+    style.WindowPadding = ImVec2(theme.window_padding, theme.window_padding);
+    style.ScaleAllSizes(scale);
     return cjk;
 }
 

@@ -55,6 +55,13 @@ inline constexpr const char* none = "(none)";
 inline constexpr const char* direct = "(direct)";
 inline constexpr const char* via = "via";
 
+inline constexpr const char* search_hint = "Search entries";
+inline constexpr const char* filters = "Filters";
+inline constexpr const char* all = "All";
+inline constexpr const char* favorites_only = "Favorites only";
+inline constexpr const char* clear_filters = "Clear";
+inline constexpr const char* no_matches = "No entries match the current filter.";
+inline constexpr const char* status_filtered_fmt = "Vault open: %zu of %zu entries, %s";
 inline constexpr const char* organize = "Organize";
 inline constexpr const char* categories = "Categories";
 inline constexpr const char* category = "Category";

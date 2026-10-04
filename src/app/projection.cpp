@@ -1,5 +1,7 @@
 #include "app/projection.hpp"
 
+#include <cctype>
+
 namespace cypherarx::gui {
 
 bool in_axis(const Entry& e, Axis axis) {
@@ -17,19 +19,77 @@ std::optional<std::int64_t> tree_parent(const Entry& e, Axis axis) {
     return std::nullopt;
 }
 
-Projection Projection::build(const std::vector<Entry>& entries, Axis axis) {
+bool contains_ci(std::string_view haystack, std::string_view needle) {
+    if (needle.empty()) {
+        return true;
+    }
+    if (needle.size() > haystack.size()) {
+        return false;
+    }
+    auto lower = [](unsigned char c) { return c < 0x80 ? static_cast<char>(std::tolower(c)) : static_cast<char>(c); };
+    for (std::size_t i = 0; i + needle.size() <= haystack.size(); ++i) {
+        bool eq = true;
+        for (std::size_t j = 0; j < needle.size() && eq; ++j) {
+            eq = lower(static_cast<unsigned char>(haystack[i + j])) ==
+                 lower(static_cast<unsigned char>(needle[j]));
+        }
+        if (eq) {
+            return true;
+        }
+    }
+    return false;
+}
+
+Projection Projection::build(const std::vector<Entry>& entries, Axis axis,
+                             const EntryPredicate& match) {
     Projection p;
     for (const auto& e : entries) {
         p.by_id[e.id] = &e;
     }
+
+    auto visible_parent = [&](const Entry& e) -> const Entry* {
+        const auto parent = tree_parent(e, axis);
+        const Entry* pe = parent ? p.find(*parent) : nullptr;
+        return pe && in_axis(*pe, axis) ? pe : nullptr;
+    };
+
+    std::unordered_set<std::int64_t> visible;
+    if (match) {
+        p.filtered = true;
+        for (const auto& e : entries) {
+            if (in_axis(e, axis) && match(e)) {
+                p.matched.insert(e.id);
+            }
+        }
+        for (const auto id : p.matched) {
+            for (const Entry* cur = p.find(id); cur; cur = visible_parent(*cur)) {
+                visible.insert(cur->id);
+            }
+        }
+        bool grew = true;
+        while (grew) {
+            grew = false;
+            for (const auto& e : entries) {
+                if (visible.contains(e.id) || !in_axis(e, axis)) {
+                    continue;
+                }
+                const Entry* pe = visible_parent(e);
+                if (pe && visible.contains(pe->id) && p.matched.contains(pe->id)) {
+                    visible.insert(e.id);
+                    p.matched.insert(e.id);
+                    grew = true;
+                }
+            }
+        }
+    }
+
     for (const auto& e : entries) {
-        if (!in_axis(e, axis)) {
+        if (!in_axis(e, axis) || (p.filtered && !visible.contains(e.id))) {
             continue;
         }
-        const auto parent = tree_parent(e, axis);
-        const Entry* parent_entry = parent ? p.find(*parent) : nullptr;
-        if (parent_entry && in_axis(*parent_entry, axis)) {
-            p.children[*parent].push_back(e.id);
+        const Entry* pe = visible_parent(e);
+        if (pe && (!p.filtered || visible.contains(pe->id))) {
+            p.children[pe->id].push_back(e.id);
         } else {
             p.roots.push_back(e.id);
         }
@@ -90,6 +150,22 @@ flatten_categories(const std::vector<Category>& categories, const char* indent) 
         }
         if (!present) {
             out.emplace_back(c.id, c.name);
+        }
+    }
+    return out;
+}
+
+std::unordered_set<std::int64_t> category_subtree(const std::vector<Category>& categories,
+                                                  std::int64_t root) {
+    std::unordered_set<std::int64_t> out{root};
+    bool grew = true;
+    while (grew) {
+        grew = false;
+        for (const auto& c : categories) {
+            if (!out.contains(c.id) && c.parent_id && out.contains(*c.parent_id)) {
+                out.insert(c.id);
+                grew = true;
+            }
         }
     }
     return out;
