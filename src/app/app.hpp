@@ -46,6 +46,8 @@ struct UnlockJob {
     bool active() const { return future.valid(); }
 };
 
+using IdLabels = std::vector<std::pair<std::int64_t, std::string>>;
+
 struct EntryDialog {
     Modal modal{"Entry###entry"};
     std::optional<Entry> editing;
@@ -54,9 +56,24 @@ struct EntryDialog {
     int service_idx = 0;
     int persona_idx = 0;
     int account_idx = 0;
-    std::vector<std::pair<std::int64_t, std::string>> services;
-    std::vector<std::pair<std::int64_t, std::string>> personas;
-    std::vector<std::pair<std::int64_t, std::string>> accounts;
+    int category_idx = 0;
+    bool favorite = false;
+    IdLabels services;
+    IdLabels personas;
+    IdLabels accounts;
+    IdLabels categories;
+    std::vector<std::int64_t> checked_tags;
+    std::string new_tag;
+};
+
+struct OrganizeDialog {
+    Modal modal{"Organize###organize"};
+    std::optional<std::int64_t> selected_category;
+    std::optional<std::int64_t> selected_tag;
+    std::string category_name;
+    int parent_idx = 0;
+    IdLabels parent_options;
+    std::string tag_name;
 };
 
 struct FieldDialog {
@@ -117,6 +134,7 @@ private:
     void draw_busy_dialog();
     void draw_spinner();
     void draw_entry_dialog();
+    void draw_organize_dialog();
     void draw_field_dialog();
     void draw_login_methods_dialog();
     void draw_confirm_dialog();
@@ -129,6 +147,7 @@ private:
     void finish_unlock(std::expected<Vault, VaultError> result);
 
     void reload_entries();
+    void reload_organization();
     void reload_fields();
     void select_entry(std::optional<std::int64_t> id);
 
@@ -136,6 +155,15 @@ private:
     void begin_edit_entry();
     bool commit_entry();
     void request_delete_entry();
+
+    void begin_organize();
+    void refresh_organize_options();
+    void add_category();
+    void rename_category();
+    void request_delete_category();
+    void add_tag_from_organize();
+    void rename_tag();
+    void request_delete_tag();
 
     void begin_add_field();
     void begin_edit_field();
@@ -147,6 +175,7 @@ private:
     void begin_login_methods();
     void reload_login_methods();
     void add_login_method();
+    void update_login_method();
     void delete_login_method();
 
     static std::string utf8(const std::filesystem::path& p);
@@ -159,6 +188,8 @@ private:
     std::optional<Vault> vault_;
     std::string vault_path_;
     std::vector<Entry> entries_;
+    std::vector<Category> categories_;
+    std::vector<Tag> tags_;
     Projection proj_;
     Axis axis_ = Axis::Service;
     std::optional<std::int64_t> selected_entry_;
@@ -171,6 +202,7 @@ private:
     PasswordDialog password_dlg_;
     UnlockJob unlock_job_;
     EntryDialog entry_dlg_;
+    OrganizeDialog organize_dlg_;
     FieldDialog field_dlg_;
     LoginMethodsDialog login_dlg_;
     ConfirmDialog confirm_dlg_;

@@ -55,6 +55,24 @@ inline constexpr const char* none = "(none)";
 inline constexpr const char* direct = "(direct)";
 inline constexpr const char* via = "via";
 
+inline constexpr const char* organize = "Organize";
+inline constexpr const char* categories = "Categories";
+inline constexpr const char* category = "Category";
+inline constexpr const char* tags = "Tags";
+inline constexpr const char* favorite = "Favorite";
+inline constexpr const char* favorite_marker = "* ";
+inline constexpr const char* new_tag = "new tag";
+inline constexpr const char* new_category = "new category";
+inline constexpr const char* parent = "Parent";
+inline constexpr const char* rename = "Rename";
+inline constexpr const char* update = "Update";
+inline constexpr const char* preset = "(preset)";
+inline constexpr const char* uncategorized = "(uncategorized)";
+inline constexpr const char* preset_read_only = "Preset categories cannot be renamed or deleted.";
+inline constexpr const char* confirm_delete_category =
+    "Delete this category?\nIts sub-categories and entries become uncategorized.";
+inline constexpr const char* confirm_delete_tag = "Delete this tag?\nIt is removed from every entry.";
+
 inline constexpr const char* select_entry_first = "Select an entry first.";
 inline constexpr const char* select_field_first = "Select a field first.";
 inline constexpr const char* select_totp_field = "Select a field of type \"totp\".";
@@ -91,6 +109,7 @@ inline constexpr const char* err_wrong_password = "Wrong master password.";
 inline constexpr const char* err_kdf_failed = "Key derivation failed.";
 inline constexpr const char* err_not_unlocked = "The vault is locked.";
 inline constexpr const char* err_not_found = "Not found.";
+inline constexpr const char* err_forbidden = "Not allowed for this item.";
 inline constexpr const char* err_unexpected = "Unexpected error.";
 
 } // namespace cypherarx::gui::text

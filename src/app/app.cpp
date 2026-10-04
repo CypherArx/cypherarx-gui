@@ -1,5 +1,6 @@
 #include "app/app.hpp"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -124,6 +125,7 @@ const char* error_text(VaultError e) {
         case VaultError::KdfFailed:          return text::err_kdf_failed;
         case VaultError::NotUnlocked:        return text::err_not_unlocked;
         case VaultError::NotFound:           return text::err_not_found;
+        case VaultError::Forbidden:          return text::err_forbidden;
         default:                             return text::err_unexpected;
     }
 }
@@ -230,6 +232,10 @@ void App::draw_entries_pane() {
         begin_login_methods();
     }
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button(text::organize)) {
+        begin_organize();
+    }
     ImGui::EndDisabled();
 
     const ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter |
@@ -268,7 +274,8 @@ void App::draw_tree_node(std::int64_t id) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     const bool open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<std::intptr_t>(id)),
-                                        flags, "%s", e->label.c_str());
+                                        flags, "%s%s", e->is_favorite ? text::favorite_marker : "",
+                                        e->label.c_str());
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
         select_entry(id);
     }
@@ -372,6 +379,7 @@ void App::draw_dialogs() {
     draw_password_dialog();
     draw_busy_dialog();
     draw_entry_dialog();
+    draw_organize_dialog();
     draw_field_dialog();
     draw_login_methods_dialog();
     draw_confirm_dialog();
@@ -464,9 +472,136 @@ void App::draw_entry_dialog() {
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 20);
         combo_pairs(text::parent_account, d.account_idx, d.accounts);
     }
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 20);
+    combo_pairs(text::category, d.category_idx, d.categories);
+    ImGui::Checkbox(text::favorite, &d.favorite);
+
+    ImGui::SeparatorText(text::tags);
+    for (const auto& t : tags_) {
+        auto it = std::ranges::find(d.checked_tags, t.id);
+        bool checked = it != d.checked_tags.end();
+        ImGui::PushID(static_cast<int>(t.id));
+        if (ImGui::Checkbox(t.name.c_str(), &checked)) {
+            if (checked) {
+                d.checked_tags.push_back(t.id);
+            } else {
+                d.checked_tags.erase(it);
+            }
+        }
+        ImGui::PopID();
+        ImGui::SameLine();
+    }
+    ImGui::NewLine();
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
+    ImGui::InputTextWithHint("##new_tag", text::new_tag, &d.new_tag);
+    ImGui::SameLine();
+    if (ImGui::Button(text::add) && !d.new_tag.empty()) {
+        if (auto t = vault_->add_tag(d.new_tag)) {
+            if (!std::ranges::contains(d.checked_tags, t->id)) {
+                d.checked_tags.push_back(t->id);
+            }
+            d.new_tag.clear();
+            reload_organization();
+        } else {
+            fail(text::tags, t.error());
+        }
+    }
+
     bool ok = false;
     const bool done = ok_cancel(ok);
     if (ok ? commit_entry() : done) {
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+}
+
+void App::draw_organize_dialog() {
+    auto& d = organize_dlg_;
+    if (!d.modal.begin()) {
+        return;
+    }
+    const float w = ImGui::GetFontSize() * 22;
+
+    ImGui::PushID("categories");
+    ImGui::SeparatorText(text::categories);
+    if (ImGui::BeginChild("cat_list", ImVec2(w, ImGui::GetFontSize() * 9), ImGuiChildFlags_Borders)) {
+        for (const auto& [id, name] : flatten_categories(categories_, cfg_.category_indent)) {
+            const Category* c = nullptr;
+            for (const auto& x : categories_) {
+                if (x.id == id) {
+                    c = &x;
+                }
+            }
+            std::string row = name;
+            if (c && c->is_preset) {
+                row += "  ";
+                row += text::preset;
+            }
+            ImGui::PushID(static_cast<int>(id));
+            if (ImGui::Selectable(row.c_str(), d.selected_category == id)) {
+                d.selected_category = id;
+                if (c) {
+                    d.category_name = c->name;
+                    d.parent_idx = index_of_id(d.parent_options, c->parent_id.value_or(0));
+                }
+            }
+            ImGui::PopID();
+        }
+    }
+    ImGui::EndChild();
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 10);
+    ImGui::InputTextWithHint("##cat_name", text::new_category, &d.category_name);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 10);
+    combo_pairs(text::parent, d.parent_idx, d.parent_options);
+    if (ImGui::Button(text::add)) {
+        add_category();
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!d.selected_category);
+    if (ImGui::Button(text::rename)) {
+        rename_category();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(text::delete_selected)) {
+        request_delete_category();
+    }
+    ImGui::EndDisabled();
+    ImGui::PopID();
+
+    ImGui::PushID("tags");
+    ImGui::SeparatorText(text::tags);
+    if (ImGui::BeginChild("tag_list", ImVec2(w, ImGui::GetFontSize() * 6), ImGuiChildFlags_Borders)) {
+        for (const auto& t : tags_) {
+            ImGui::PushID(static_cast<int>(t.id));
+            if (ImGui::Selectable(t.name.c_str(), d.selected_tag == t.id)) {
+                d.selected_tag = t.id;
+                d.tag_name = t.name;
+            }
+            ImGui::PopID();
+        }
+    }
+    ImGui::EndChild();
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 10);
+    ImGui::InputTextWithHint("##tag_name", text::new_tag, &d.tag_name);
+    ImGui::SameLine();
+    if (ImGui::Button(text::add)) {
+        add_tag_from_organize();
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!d.selected_tag);
+    if (ImGui::Button(text::rename)) {
+        rename_tag();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(text::delete_selected)) {
+        request_delete_tag();
+    }
+    ImGui::EndDisabled();
+    ImGui::PopID();
+
+    ImGui::Separator();
+    if (ImGui::Button(text::close, ImVec2(100, 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
         ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
@@ -530,6 +665,14 @@ void App::draw_login_methods_dialog() {
             ImGui::PushID(static_cast<int>(m.id));
             if (ImGui::Selectable(row.c_str(), d.selected == m.id)) {
                 d.selected = m.id;
+                d.method_idx = index_of(text::login_method_types, m.method_type);
+                d.via_idx = 0;
+                for (std::size_t i = 0; i < d.via_options.size(); ++i) {
+                    if (d.via_options[i].first == m.linked_entry_id) {
+                        d.via_idx = static_cast<int>(i);
+                    }
+                }
+                d.notes = m.notes;
             }
             ImGui::PopID();
         }
@@ -543,14 +686,17 @@ void App::draw_login_methods_dialog() {
     ImGui::SameLine();
     ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12);
     combo_pairs("##via", d.via_idx, d.via_options);
-    ImGui::SetNextItemWidth(w - ImGui::GetFontSize() * 4);
+    ImGui::SetNextItemWidth(w);
     ImGui::InputTextWithHint("##lm_notes", text::notes, &d.notes);
-    ImGui::SameLine();
     if (ImGui::Button(text::add)) {
         add_login_method();
     }
-
+    ImGui::SameLine();
     ImGui::BeginDisabled(!d.selected);
+    if (ImGui::Button(text::update)) {
+        update_login_method();
+    }
+    ImGui::SameLine();
     if (ImGui::Button(text::delete_selected)) {
         delete_login_method();
     }
@@ -684,12 +830,31 @@ void App::reload_entries() {
     }
     entries_ = std::move(*list);
     proj_ = Projection::build(entries_, axis_);
+    reload_organization();
     if (selected_entry_ && !proj_.find(*selected_entry_)) {
         selected_entry_.reset();
     }
     status_ = format(text::status_open_fmt, entries_.size(),
                      axis_ == Axis::Persona ? text::axis_persona : text::axis_service);
     reload_fields();
+}
+
+void App::reload_organization() {
+    categories_.clear();
+    tags_.clear();
+    if (!vault_) {
+        return;
+    }
+    if (auto c = vault_->list_categories()) {
+        categories_ = std::move(*c);
+    } else {
+        fail(text::categories, c.error());
+    }
+    if (auto t = vault_->list_tags()) {
+        tags_ = std::move(*t);
+    } else {
+        fail(text::tags, t.error());
+    }
 }
 
 void App::reload_fields() {
@@ -739,6 +904,10 @@ void App::begin_add_entry() {
     auto& d = entry_dlg_;
     d = EntryDialog{};
     d.personas.emplace_back(0, text::none);
+    d.categories.emplace_back(0, text::uncategorized);
+    for (auto& c : flatten_categories(categories_, cfg_.category_indent)) {
+        d.categories.push_back(std::move(c));
+    }
     for (const auto& e : entries_) {
         if (e.entry_type == "service") {
             d.services.emplace_back(e.id, e.label);
@@ -767,6 +936,11 @@ void App::begin_edit_entry() {
         d.account_idx = index_of_id(d.accounts, *cur->parent_id);
     }
     d.persona_idx = index_of_id(d.personas, cur->persona_id.value_or(0));
+    d.category_idx = index_of_id(d.categories, cur->category_id.value_or(0));
+    d.favorite = cur->is_favorite;
+    if (auto tags = vault_->entry_tags(cur->id)) {
+        d.checked_tags = std::move(*tags);
+    }
 }
 
 bool App::commit_entry() {
@@ -779,6 +953,19 @@ bool App::commit_entry() {
     e.entry_type = text::entry_types[static_cast<std::size_t>(d.type_idx)];
     e.parent_id.reset();
     e.persona_id.reset();
+    e.is_favorite = d.favorite;
+    e.category_id.reset();
+    if (const auto cid = d.categories[static_cast<std::size_t>(d.category_idx)].first; cid != 0) {
+        e.category_id = cid;
+    }
+    if (!d.new_tag.empty()) {
+        if (auto t = vault_->add_tag(d.new_tag)) {
+            if (!std::ranges::contains(d.checked_tags, t->id)) {
+                d.checked_tags.push_back(t->id);
+            }
+            d.new_tag.clear();
+        }
+    }
     if (e.entry_type == "account") {
         if (d.services.empty()) {
             message(text::need_service_first);
@@ -808,10 +995,137 @@ bool App::commit_entry() {
             fail(text::add_entry, r.error());
             return false;
         }
+        e.id = r->id;
         selected_entry_ = r->id;
+    }
+    if (auto r = vault_->set_entry_tags(e.id, d.checked_tags); !r) {
+        fail(text::tags, r.error());
     }
     reload_entries();
     return true;
+}
+
+void App::begin_organize() {
+    organize_dlg_ = OrganizeDialog{};
+    refresh_organize_options();
+    organize_dlg_.modal.open();
+}
+
+void App::refresh_organize_options() {
+    auto& d = organize_dlg_;
+    d.parent_options.clear();
+    d.parent_options.emplace_back(0, text::none);
+    for (auto& c : flatten_categories(categories_, cfg_.category_indent)) {
+        d.parent_options.push_back(std::move(c));
+    }
+    if (d.parent_idx >= static_cast<int>(d.parent_options.size())) {
+        d.parent_idx = 0;
+    }
+}
+
+void App::add_category() {
+    auto& d = organize_dlg_;
+    if (d.category_name.empty()) {
+        return;
+    }
+    std::optional<std::int64_t> parent;
+    if (const auto pid = d.parent_options[static_cast<std::size_t>(d.parent_idx)].first; pid != 0) {
+        parent = pid;
+    }
+    auto r = vault_->add_category(d.category_name, parent);
+    if (!r) {
+        fail(text::categories, r.error());
+        return;
+    }
+    d.category_name.clear();
+    d.selected_category = r->id;
+    reload_organization();
+    refresh_organize_options();
+}
+
+void App::rename_category() {
+    auto& d = organize_dlg_;
+    if (!d.selected_category || d.category_name.empty()) {
+        return;
+    }
+    std::optional<std::int64_t> parent;
+    if (const auto pid = d.parent_options[static_cast<std::size_t>(d.parent_idx)].first; pid != 0) {
+        parent = pid;
+    }
+    if (auto r = vault_->update_category(*d.selected_category, d.category_name, parent); !r) {
+        message(r.error() == VaultError::Forbidden ? text::preset_read_only
+                                                    : error_text(r.error()));
+        return;
+    }
+    reload_organization();
+    refresh_organize_options();
+}
+
+void App::request_delete_category() {
+    auto& d = organize_dlg_;
+    if (!d.selected_category) {
+        return;
+    }
+    confirm_dlg_.text = text::confirm_delete_category;
+    confirm_dlg_.on_yes = [this] {
+        auto& dlg = organize_dlg_;
+        if (auto r = vault_->delete_category(*dlg.selected_category); !r) {
+            message(r.error() == VaultError::Forbidden ? text::preset_read_only
+                                                        : error_text(r.error()));
+            return;
+        }
+        dlg.selected_category.reset();
+        dlg.category_name.clear();
+        reload_entries();
+        refresh_organize_options();
+    };
+    confirm_dlg_.modal.open();
+}
+
+void App::add_tag_from_organize() {
+    auto& d = organize_dlg_;
+    if (d.tag_name.empty()) {
+        return;
+    }
+    auto r = vault_->add_tag(d.tag_name);
+    if (!r) {
+        fail(text::tags, r.error());
+        return;
+    }
+    d.tag_name.clear();
+    d.selected_tag = r->id;
+    reload_organization();
+}
+
+void App::rename_tag() {
+    auto& d = organize_dlg_;
+    if (!d.selected_tag || d.tag_name.empty()) {
+        return;
+    }
+    if (auto r = vault_->rename_tag(*d.selected_tag, d.tag_name); !r) {
+        fail(text::tags, r.error());
+        return;
+    }
+    reload_organization();
+}
+
+void App::request_delete_tag() {
+    auto& d = organize_dlg_;
+    if (!d.selected_tag) {
+        return;
+    }
+    confirm_dlg_.text = text::confirm_delete_tag;
+    confirm_dlg_.on_yes = [this] {
+        auto& dlg = organize_dlg_;
+        if (auto r = vault_->delete_tag(*dlg.selected_tag); !r) {
+            fail(text::tags, r.error());
+            return;
+        }
+        dlg.selected_tag.reset();
+        dlg.tag_name.clear();
+        reload_organization();
+    };
+    confirm_dlg_.modal.open();
 }
 
 void App::request_delete_entry() {
@@ -1007,6 +1321,20 @@ void App::add_login_method() {
     }
     d.notes.clear();
     d.selected = r->id;
+    reload_login_methods();
+}
+
+void App::update_login_method() {
+    auto& d = login_dlg_;
+    if (!d.selected) {
+        return;
+    }
+    const std::string method = text::login_method_types[static_cast<std::size_t>(d.method_idx)];
+    const auto via = d.via_options[static_cast<std::size_t>(d.via_idx)].first;
+    if (auto r = vault_->update_login_method(*d.selected, method, via, d.notes); !r) {
+        fail(text::update, r.error());
+        return;
+    }
     reload_login_methods();
 }
 

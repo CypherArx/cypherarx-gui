@@ -59,6 +59,7 @@ struct Config {
     ClipboardConfig clipboard;
     SecurityConfig security;
     Limits limits;
+    const char* category_indent = "    ";
     const char* vault_extension = ".cax";
     const wchar_t* file_filter = L"CypherArx Vault (*.cax)\0*.cax\0All Files (*.*)\0*.*\0";
 };

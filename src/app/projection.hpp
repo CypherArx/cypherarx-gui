@@ -27,4 +27,7 @@ struct Projection {
 bool in_axis(const Entry& e, Axis axis);
 std::optional<std::int64_t> tree_parent(const Entry& e, Axis axis);
 
+std::vector<std::pair<std::int64_t, std::string>>
+flatten_categories(const std::vector<Category>& categories, const char* indent);
+
 } // namespace cypherarx::gui

@@ -57,4 +57,42 @@ std::optional<std::int64_t> Projection::cross_parent(const Entry& e, Axis axis) 
     return axis == Axis::Persona ? e.parent_id : e.persona_id;
 }
 
+namespace {
+
+void flatten_into(const std::vector<Category>& all, std::optional<std::int64_t> parent, int depth,
+                  const char* indent, std::vector<std::pair<std::int64_t, std::string>>& out) {
+    for (const auto& c : all) {
+        if (c.parent_id != parent) {
+            continue;
+        }
+        std::string name;
+        for (int i = 0; i < depth; ++i) {
+            name += indent;
+        }
+        name += c.name;
+        out.emplace_back(c.id, std::move(name));
+        if (depth < 32) {
+            flatten_into(all, c.id, depth + 1, indent, out);
+        }
+    }
+}
+
+} // namespace
+
+std::vector<std::pair<std::int64_t, std::string>>
+flatten_categories(const std::vector<Category>& categories, const char* indent) {
+    std::vector<std::pair<std::int64_t, std::string>> out;
+    flatten_into(categories, std::nullopt, 0, indent, out);
+    for (const auto& c : categories) {
+        bool present = false;
+        for (const auto& [id, _] : out) {
+            present = present || id == c.id;
+        }
+        if (!present) {
+            out.emplace_back(c.id, c.name);
+        }
+    }
+    return out;
+}
+
 } // namespace cypherarx::gui
