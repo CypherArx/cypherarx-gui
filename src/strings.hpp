@@ -102,6 +102,13 @@ inline constexpr const char* status_open_fmt = "Vault open: %zu entries, %s";
 inline constexpr const char* error = "Error";
 inline constexpr const char* confirm = "Confirm";
 inline constexpr const char* password_empty = "Enter the master password.";
+inline constexpr const char* label_required = "Enter a label.";
+inline constexpr const char* name_required = "Enter a name.";
+inline constexpr const char* method = "Method";
+inline constexpr const char* name = "Name";
+inline constexpr const char* no_fields = "This entry has no fields.";
+inline constexpr const char* no_entries = "No entries yet.";
+inline constexpr const char* totp_remaining_short_fmt = "%u s";
 
 inline constexpr std::array<const char*, 4> entry_types = {"service", "persona", "account", "child"};
 inline constexpr std::array<const char*, 3> field_types = {"text", "password", "totp"};
