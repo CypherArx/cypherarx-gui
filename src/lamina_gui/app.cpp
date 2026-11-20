@@ -8,7 +8,6 @@
 #include "lamina/tokens/motion.hpp"
 #include "lamina/tokens/title_bar.hpp"
 #include "lamina_sdl3/app.hpp"
-#include "lamina_sdl3/resources.hpp"
 #include "lamina_sdl3/system_fonts.hpp"
 #include "lamina_thorvg/canvas.hpp"
 
@@ -79,7 +78,7 @@ App::App()
       window_({cfg_.window.title, cfg_.window.width_dp,
                cfg_.window.height_dp + title_bar_extra(cfg_.window), cfg_.window.client_title_bar},
               std::make_unique<lm::thorvg::Canvas>(unsized_pixels, unsized_pixels)),
-      kit_{lm::sdl3::system_font_stack(), lm::sdl3::bundled_icon_font(), &window_.clipboard(), &cfg_,
+      kit_{lm::sdl3::system_font_stack(), lm::icons::IconFont::from_resource(res::fonts::symbols), &window_.clipboard(), &cfg_,
            &cfg_.theme.presets[cfg_.theme.initial]},
       title_bar_({cfg_.window.title, kit_.icons, nullptr, kit_.theme->background}, kit_.fonts),
       scheme_(build_scheme(cfg_.theme, *kit_.theme)),

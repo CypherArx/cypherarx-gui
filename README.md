@@ -50,8 +50,14 @@ the model layer in `src/model/`: it creates a vault, adds a service, a persona a
 checks both axes and the search, adds a field, copies it, and checks that closing the vault
 clears the clipboard.
 
-The lamina-ui front end needs `assets/` (the icon font) next to the executable; the build copies
-it there.
+The lamina-ui front end embeds its icons. The Material Symbols it uses are listed under
+`lamina_add_resources` in `CMakeLists.txt`; the build cuts them out of the font that lamina-ui
+vendors and compiles them into the executable, so it needs no asset folder. That step needs
+Python 3 with fontTools and brotli:
+
+```sh
+python -m pip install -r external/lamina-ui/tools/icon-subset/requirements.txt
+```
 
 ## CI
 

@@ -8,10 +8,11 @@
 
 #include "lamina/color/argb.hpp"
 #include "lamina/color/scheme.hpp"
-#include "lamina/icons/symbols.hpp"
+#include "lamina/icons/symbol.hpp"
 #include "lamina/tokens/button.hpp"
 #include "lamina/tokens/typography.hpp"
 
+#include "lamina_gui/res.hpp"
 #include "strings.hpp"
 
 namespace cypherarx::lamina_gui {
@@ -47,7 +48,7 @@ struct ThemeConfig {
     double contrast = 0.0;
     std::vector<ThemePreset> presets{
         {.name = cypherarx::gui::text::theme_dark_outlined,
-         .icon = lamina::icons::Symbol::dark_mode,
+         .icon = res::icons::dark_mode,
          .dark = true,
          .variant = lamina::color::Variant::tonal_spot,
          .background = lamina::color::Role::surface_container_lowest,
@@ -59,7 +60,7 @@ struct ThemeConfig {
          .entry_action = lamina::tokens::ButtonStyle::filled,
          .field_action = lamina::tokens::ButtonStyle::outlined},
         {.name = cypherarx::gui::text::theme_dark_tonal,
-         .icon = lamina::icons::Symbol::dark_mode,
+         .icon = res::icons::dark_mode,
          .dark = true,
          .variant = lamina::color::Variant::neutral,
          .background = lamina::color::Role::surface,
@@ -71,7 +72,7 @@ struct ThemeConfig {
          .entry_action = lamina::tokens::ButtonStyle::filled,
          .field_action = lamina::tokens::ButtonStyle::filled},
         {.name = cypherarx::gui::text::theme_light,
-         .icon = lamina::icons::Symbol::light_mode,
+         .icon = res::icons::light_mode,
          .dark = false,
          .variant = lamina::color::Variant::tonal_spot,
          .background = lamina::color::Role::surface,
@@ -185,21 +186,29 @@ struct SpinnerConfig {
 };
 
 struct IconConfig {
-    lamina::icons::Symbol favorite = lamina::icons::Symbol::star;
-    lamina::icons::Symbol axis_service = lamina::icons::Symbol::grid_view;
-    lamina::icons::Symbol axis_persona = lamina::icons::Symbol::person;
-    lamina::icons::Symbol expanded = lamina::icons::Symbol::expand_more;
-    lamina::icons::Symbol collapsed = lamina::icons::Symbol::chevron_right;
-    lamina::icons::Symbol dropdown = lamina::icons::Symbol::expand_more;
-    lamina::icons::Symbol show = lamina::icons::Symbol::visibility;
-    lamina::icons::Symbol hide = lamina::icons::Symbol::visibility_off;
-    lamina::icons::Symbol checked = lamina::icons::Symbol::check;
-    lamina::icons::Symbol add = lamina::icons::Symbol::add;
-    lamina::icons::Symbol edit = lamina::icons::Symbol::edit;
-    lamina::icons::Symbol remove = lamina::icons::Symbol::delete_;
-    lamina::icons::Symbol copy = lamina::icons::Symbol::content_copy;
-    lamina::icons::Symbol search = lamina::icons::Symbol::search;
-    lamina::icons::Symbol theme_menu = lamina::icons::Symbol::palette;
+    lamina::icons::Symbol favorite = res::icons::star;
+    lamina::icons::Symbol axis_service = res::icons::grid_view;
+    lamina::icons::Symbol axis_persona = res::icons::person;
+    lamina::icons::Symbol expanded = res::icons::expand_more;
+    lamina::icons::Symbol collapsed = res::icons::chevron_right;
+    lamina::icons::Symbol dropdown = res::icons::expand_more;
+    lamina::icons::Symbol show = res::icons::visibility;
+    lamina::icons::Symbol checked = res::icons::check;
+    lamina::icons::Symbol theme_menu = res::icons::palette;
+    lamina::icons::Symbol add = res::icons::add;
+    lamina::icons::Symbol edit = res::icons::edit;
+    lamina::icons::Symbol remove = res::icons::delete_;
+    lamina::icons::Symbol copy = res::icons::content_copy;
+    lamina::icons::Symbol new_vault = res::icons::create_new_folder;
+    lamina::icons::Symbol open_vault = res::icons::folder_open;
+    lamina::icons::Symbol close_vault = res::icons::lock;
+    lamina::icons::Symbol login_methods = res::icons::login;
+    lamina::icons::Symbol organize = res::icons::category;
+    lamina::icons::Symbol totp = res::icons::timer;
+    lamina::icons::Symbol service = res::icons::public_;
+    lamina::icons::Symbol persona = res::icons::person;
+    lamina::icons::Symbol account = res::icons::account_circle;
+    lamina::icons::Symbol child = res::icons::subdirectory_arrow_right;
 };
 
 struct ClipboardConfig {

@@ -77,10 +77,35 @@ if(CYPHERARX_GUI_LAMINA)
     lamina::sdl3
     comdlg32
   )
-  add_custom_command(TARGET cypherarx_gui_lamina POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_CURRENT_SOURCE_DIR}/external/lamina-ui/assets"
-      "$<TARGET_FILE_DIR:cypherarx_gui_lamina>/assets")
+  lamina_add_resources(cypherarx_gui_lamina_resources
+    NAMESPACE cypherarx::lamina_gui::res
+    HEADER lamina_gui/res.hpp
+    ICONS
+      account_circle
+      add
+      category
+      check
+      chevron_right
+      content_copy
+      create_new_folder
+      dark_mode
+      delete
+      edit
+      expand_more
+      folder_open
+      grid_view
+      light_mode
+      lock
+      login
+      palette
+      person
+      public
+      star
+      subdirectory_arrow_right
+      timer
+      visibility
+  )
+  target_link_libraries(cypherarx_gui_lamina PRIVATE cypherarx_gui_lamina_resources)
 
   if(MSVC)
     target_compile_options(cypherarx_gui_model PRIVATE /W4 /permissive-)

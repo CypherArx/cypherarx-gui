@@ -50,8 +50,14 @@ cmake --build --preset default
 `src/model/` のモデル層を動かします。金庫を作り、サービス・名義・アカウントを追加し、両方の軸と
 検索を確かめ、フィールドを追加してコピーし、金庫を閉じるとクリップボードが消えることを確かめます。
 
-lamina-ui 版は、実行ファイルの隣に `assets/`（アイコンのフォント）が要ります。ビルドがそこへ
-写します。
+lamina-ui 版はアイコンを埋め込みます。使う Material Symbols は `CMakeLists.txt` の
+`lamina_add_resources` に並べてあり、ビルドが lamina-ui の同梱フォントからその分だけ切り出して
+実行ファイルに組み込みます。そのため素材のフォルダーは要りません。この段階には、fontTools と
+brotli の入った Python 3 が要ります。
+
+```sh
+python -m pip install -r external/lamina-ui/tools/icon-subset/requirements.txt
+```
 
 ## CI
 
