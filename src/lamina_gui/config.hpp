@@ -201,8 +201,9 @@ struct SpinnerConfig {
 
 struct IconConfig {
     lamina::icons::Symbol favorite = res::icons::star;
-    lamina::icons::Symbol axis_service = res::icons::grid_view;
-    lamina::icons::Symbol axis_persona = res::icons::person;
+    lamina::icons::Symbol all_items = res::icons::inventory_2;
+    lamina::icons::Symbol category = res::icons::folder;
+    lamina::icons::Symbol tag = res::icons::sell;
     lamina::icons::Symbol expanded = res::icons::expand_more;
     lamina::icons::Symbol collapsed = res::icons::chevron_right;
     lamina::icons::Symbol dropdown = res::icons::expand_more;

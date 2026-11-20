@@ -85,7 +85,7 @@ private:
     LabelC& path_;
     IconButtonC& theme_button_;
     ListView& sidebar_;
-    ButtonC& clear_;
+    TabsC& tabs_;
     TextFieldC& search_;
     ButtonC& add_entry_;
     IconButtonC& organize_;

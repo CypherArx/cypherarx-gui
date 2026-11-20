@@ -123,6 +123,8 @@ inline constexpr const char* name_optional = "Name (optional)";
 inline constexpr const char* account_name_hint =
     "Leave the name empty to show the persona or the service instead.";
 inline constexpr const char* no_persona = "(no persona)";
+inline constexpr const char* all_items = "All items";
+inline constexpr const char* favorites = "Favorites";
 inline constexpr const char* fields_on_accounts = "Fields belong to accounts and their children.";
 
 inline constexpr std::array<const char*, 4> entry_types = {"service", "persona", "account", "child"};

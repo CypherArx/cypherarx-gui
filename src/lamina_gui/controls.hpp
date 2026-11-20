@@ -15,6 +15,7 @@
 #include "lamina/widgets/interaction.hpp"
 #include "lamina/widgets/label.hpp"
 #include "lamina/widgets/progress_indicator.hpp"
+#include "lamina/widgets/tabs.hpp"
 #include "lamina/widgets/text_field.hpp"
 
 #include "lamina_gui/ui.hpp"
@@ -220,6 +221,36 @@ private:
     HoverTip tip_state_;
     Rect window_{0.0, 0.0, 0.0, 0.0};
 };
+struct TabSpec {
+    std::string label;
+    lm::icons::Symbol icon;
+};
+
+class TabsC final : public Control {
+public:
+    TabsC(const Kit& kit, const std::vector<TabSpec>& tabs);
+
+    std::function<void(std::size_t)> on_change;
+    std::size_t selected() const { return w_.selected(); }
+    void select(std::size_t index);
+
+    Size measure(const Constraints& c) override;
+    void arrange(const Rect& r) override;
+    void paint(Canvas& canvas, const ColorScheme& scheme) const override;
+    void handle(const PointerEvent& e) override;
+    bool handle(const KeyEvent& e) override;
+    void cancel() override { w_.cancel_interaction(); }
+    void step(double dt) override { w_.step(dt); }
+    bool animating() const override { return w_.animating(); }
+    bool focusable() const override { return true; }
+    bool focused() const override { return w_.focused(); }
+    void set_focused(bool focused) override { w_.set_focused(focused); }
+
+private:
+    const Kit& kit_;
+    lm::widgets::TabRow w_;
+};
+
 class CheckC final : public Control {
 public:
     CheckC(const Kit& kit, std::string label);

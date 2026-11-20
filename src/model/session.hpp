@@ -42,6 +42,15 @@ struct SessionSettings {
     std::uint32_t totp_period_seconds = 30;
 };
 
+struct Scope {
+    enum class Kind { all, favorites, category, tag };
+
+    Kind kind = Kind::all;
+    std::int64_t id = 0;
+
+    bool operator==(const Scope&) const = default;
+};
+
 struct EntryTraits {
     bool has_category = false;
     bool has_fields = false;
@@ -113,10 +122,8 @@ public:
     void set_axis(Axis axis);
     const Filter& filter() const { return filter_; }
     void set_query(std::string query);
-    void set_category_filter(std::optional<std::int64_t> id);
-    void set_tag_filter(std::optional<std::int64_t> id);
-    void set_favorites_only(bool on);
-    void clear_filters();
+    Scope scope() const;
+    void set_scope(Scope scope);
 
     const std::vector<Entry>& entries() const { return entries_; }
     const Projection& projection() const { return proj_; }

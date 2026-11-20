@@ -78,7 +78,10 @@ int run_selftest() {
              ok;
         s.set_query("example.com");
         ok = expect(s.projection().visible_count() == 1, "search") && ok;
-        s.clear_filters();
+        s.set_query("");
+        s.set_scope({gui::Scope::Kind::favorites});
+        ok = expect(s.projection().visible_count() == 0, "the favorites scope") && ok;
+        s.set_scope({});
 
         const std::int64_t unnamed = add_entry(s, "account", "", service, persona);
         ok = expect(unnamed != 0 && s.selected_entry() && s.entry_title(*s.selected_entry()) == "Example",

@@ -32,6 +32,16 @@ lm::widgets::ButtonOptions disabled_options(const Kit& kit, const ButtonSpec& sp
     return o;
 }
 
+lm::widgets::TabRowOptions tab_options(const Kit& kit, const std::vector<TabSpec>& tabs) {
+    lm::widgets::TabRowOptions o;
+    for (const TabSpec& tab : tabs) {
+        o.tabs.push_back({tab.label, lm::icons::Icon{kit.icons, tab.icon}});
+    }
+    o.style = lm::tokens::TabStyle::secondary;
+    o.icon_position = lm::widgets::TabIconPosition::leading;
+    return o;
+}
+
 lm::widgets::CircularProgressOptions spinner_options(const Kit& kit) {
     lm::widgets::CircularProgressOptions o;
     o.diameter = kit.cfg->spinner.diameter;
@@ -387,6 +397,46 @@ void IconButtonC::step(double dt) {
 std::optional<double> IconButtonC::next_wake_seconds() const {
     return has_tip_ ? tip_state_.wake(kit_.cfg->tooltip.delay_seconds) : std::nullopt;
 }
+TabsC::TabsC(const Kit& kit, const std::vector<TabSpec>& tabs)
+    : kit_(kit), w_(tab_options(kit, tabs), kit.fonts) {}
+
+void TabsC::select(std::size_t index) {
+    if (index != w_.selected() && index < w_.count()) {
+        w_.select(index);
+    }
+}
+
+Size TabsC::measure(const Constraints& c) {
+    return {finite_or(c.max_width, w_.width()), w_.height()};
+}
+
+void TabsC::arrange(const Rect& r) {
+    w_.set_width(r.width);
+    w_.set_origin({r.x, r.y});
+}
+
+void TabsC::paint(Canvas& canvas, const ColorScheme& scheme) const {
+    ColorScheme on_pane = scheme;
+    on_pane.colors[static_cast<std::size_t>(Role::surface)] = scheme[pane_surface(*kit_.theme)];
+    w_.paint(canvas, on_pane);
+}
+
+void TabsC::handle(const PointerEvent& e) {
+    if (w_.handle(e) && on_change) {
+        on_change(w_.selected());
+    }
+}
+
+bool TabsC::handle(const KeyEvent& e) {
+    if (!w_.handle(e)) {
+        return false;
+    }
+    if (on_change) {
+        on_change(w_.selected());
+    }
+    return true;
+}
+
 CheckC::CheckC(const Kit& kit, std::string label)
     : kit_(kit), label_(line_of(kit, label, TypeRole::body_large)) {}
 

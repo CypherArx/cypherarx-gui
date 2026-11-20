@@ -88,14 +88,15 @@ reason (and to make a later translation a single-file change).
 
 - Create / open a vault (`*.cax`) with a master password. The password is typed into guarded
   memory and wiped after key derivation, which runs on a worker thread behind a spinner.
-- Three columns: a **sidebar** (view axis, favorites filter, category tree, tags), the **entry
-  tree** with a search box, and the **fields** pane for the selected entry.
+- Three columns: a **sidebar** that chooses what to look at, the **entry tree** with a tab for
+  each axis and a search box, and the **fields** pane for the selected entry.
 - Entry tree with two views of the same data: **Service axis** (tree by `parent_id`) and
   **Persona axis** (tree by `persona_id`). An account appears in both; the third column shows
   its parent on the other axis. See the design canon, §10.1.1.
-- Search (label / display name / URL, ASCII case-insensitive) and filters by category (including
-  sub-categories), tag and favorites. Matching entries keep their ancestors and descendants in
-  the tree; ancestors that do not match themselves are dimmed.
+- The sidebar picks one place at a time: all items, the favorites, one category (with its
+  sub-categories) or one tag, so only one of its rows is ever highlighted. Search (label /
+  display name / URL, ASCII case-insensitive) narrows that further. Matching entries keep their
+  ancestors and descendants in the tree; ancestors that do not match themselves are dimmed.
 - Add / edit / delete entries. Add opens a menu of what to add (Service, Persona, Account,
   Child). An account picks its service and (optionally) persona; a child picks its parent
   account. An account cannot be created before a service exists, and a child cannot be created
@@ -147,7 +148,7 @@ or while something moves, and wakes itself for the caret blink, the tooltips, th
 and the clipboard deadline.
 
 Buttons, icon buttons, checkboxes, text fields, labels, the progress ring, the scroll area,
-focus order, menus and the confirm / message dialogs are lamina-ui widgets. lamina-ui has no
+focus order, tabs, menus and the confirm / message dialogs are lamina-ui widgets. lamina-ui has no
 list, tree, drop-down, masked input, tooltip or dialog with custom content yet, so those are
 written here on top of lamina-ui's canvas, text layout and tokens:
 

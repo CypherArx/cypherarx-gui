@@ -22,7 +22,13 @@ using lm::tokens::ButtonStyle;
 
 constexpr int unsized_pixels = 1;
 
-enum SidebarGroup { group_view = 1, group_favorites, group_category, group_tag };
+constexpr int group_of(gui::Scope::Kind kind) {
+    return static_cast<int>(kind) + 1;
+}
+
+constexpr gui::Scope::Kind kind_of(int group) {
+    return static_cast<gui::Scope::Kind>(group - 1);
+}
 
 enum EntryAction : std::size_t { entry_login, entry_edit, entry_delete };
 
@@ -106,7 +112,8 @@ App::App()
       path_(base_.add<LabelC>(kit_, LabelSpec{"", TypeRole::body_medium, Role::on_surface_variant})),
       theme_button_(base_.add<IconButtonC>(kit_, cfg_.icons.theme_menu, false, str::theme)),
       sidebar_(base_.add<ListView>(kit_)),
-      clear_(base_.add<ButtonC>(kit_, ButtonSpec{str::clear_filters, ButtonStyle::text})),
+      tabs_(base_.add<TabsC>(kit_, std::vector<TabSpec>{{str::axis_service, cfg_.icons.service},
+                                                         {str::axis_persona, cfg_.icons.persona}})),
       search_(base_.add<TextFieldC>(kit_, str::search_hint)),
       add_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::add, kit_.theme->entry_action, cfg_.icons.add})),
       organize_(base_.add<IconButtonC>(kit_, cfg_.icons.organize, false, str::organize)),
@@ -250,31 +257,12 @@ void App::wire() {
     };
 
     sidebar_.on_select = [this](const ListRow& row) {
-        const gui::Filter& filter = session_.filter();
-        switch (row.group) {
-        case group_view:
-            session_.set_axis(row.id == 0 ? gui::Axis::Service : gui::Axis::Persona);
-            break;
-        case group_favorites:
-            session_.set_favorites_only(!filter.favorites_only);
-            break;
-        case group_category:
-            session_.set_category_filter(row.id == 0 || filter.category == row.id
-                                             ? std::nullopt
-                                             : std::optional<std::int64_t>(row.id));
-            break;
-        case group_tag:
-            session_.set_tag_filter(row.id == 0 || filter.tag == row.id
-                                        ? std::nullopt
-                                        : std::optional<std::int64_t>(row.id));
-            break;
-        default:
-            break;
-        }
+        session_.set_scope({kind_of(row.group), row.id});
     };
-    clear_.on_click = [this] { session_.clear_filters(); };
+    tabs_.on_change = [this](std::size_t index) {
+        session_.set_axis(index == 0 ? gui::Axis::Service : gui::Axis::Persona);
+    };
     search_.on_change = [this](const std::string& query) { session_.set_query(query); };
-
     tree_.on_select = [this](const ListRow& row) { session_.select_entry(row.id); };
     tree_.on_toggle = [this](const ListRow& row) {
         if (!collapsed_.erase(row.id)) {
@@ -340,12 +328,12 @@ NodePtr App::build_layout() {
     auto toolbar = lm::layout::row({new_.node(), open_.node(), close_.node(), grow(path_.node()), theme_button_.node()});
     toolbar->spacing(t.control_gap).cross_align(center);
 
-    auto sidebar = lm::layout::column({grow(sidebar_.node()), clear_.node()});
+    auto sidebar = lm::layout::column({grow(sidebar_.node())});
     sidebar->padding(padding).spacing(t.control_gap).cross_align(stretch).fill_cross(true).fill_main(true);
 
     auto entry_bar = lm::layout::row({grow(search_.node()), add_entry_.node(), organize_.node()});
     entry_bar->spacing(t.control_gap).cross_align(center);
-    auto entries = lm::layout::column({entry_bar, grow(tree_.node())});
+    auto entries = lm::layout::column({tabs_.node(), entry_bar, grow(tree_.node())});
     entries->padding(padding).spacing(t.gap).cross_align(stretch).fill_cross(true).fill_main(true);
 
     auto field_bar = lm::layout::row({grow(title_.node()), add_field_.node()});
@@ -388,7 +376,8 @@ void App::layout() {
 }
 
 void App::sync_sidebar() {
-    const gui::Filter& filter = session_.filter();
+    using Kind = gui::Scope::Kind;
+    const gui::Scope scope = session_.scope();
     std::vector<ListRow> rows;
     auto section = [&](const char* title) {
         ListRow row;
@@ -396,35 +385,32 @@ void App::sync_sidebar() {
         row.section = true;
         rows.push_back(std::move(row));
     };
-    auto item = [&](int group, std::int64_t id, std::string text, bool selected) -> ListRow& {
+    auto item = [&](Kind kind, std::int64_t id, std::string text, lm::icons::Symbol icon) {
         ListRow row;
-        row.group = group;
+        row.group = group_of(kind);
         row.id = id;
         row.text = std::move(text);
-        row.selected = selected;
+        row.icon = icon;
+        row.selected = scope == gui::Scope{kind, id};
         rows.push_back(std::move(row));
-        return rows.back();
     };
-    section(str::view);
-    item(group_view, 0, str::axis_service, session_.axis() == gui::Axis::Service).icon =
-        cfg_.icons.axis_service;
-    item(group_view, 1, str::axis_persona, session_.axis() == gui::Axis::Persona).icon =
-        cfg_.icons.axis_persona;
-    section(str::filters);
-    item(group_favorites, 0, str::favorites_only, filter.favorites_only).icon = cfg_.icons.favorite;
-    section(str::categories);
-    item(group_category, 0, str::all, !filter.category);
-    for (auto& [id, name] : session_.flat_categories()) {
-        item(group_category, id, std::move(name), filter.category == id);
+    item(Kind::all, 0, str::all_items, cfg_.icons.all_items);
+    item(Kind::favorites, 0, str::favorites, cfg_.icons.favorite);
+    const gui::IdLabels categories = session_.flat_categories();
+    if (!categories.empty()) {
+        section(str::categories);
+        for (const auto& [id, name] : categories) {
+            item(Kind::category, id, name, cfg_.icons.category);
+        }
     }
-    section(str::tags);
-    item(group_tag, 0, str::all, !filter.tag);
-    for (const Tag& tag : session_.tags()) {
-        item(group_tag, tag.id, tag.name, filter.tag == tag.id);
+    if (!session_.tags().empty()) {
+        section(str::tags);
+        for (const Tag& tag : session_.tags()) {
+            item(Kind::tag, tag.id, tag.name, cfg_.icons.tag);
+        }
     }
     sidebar_.set_rows(std::move(rows));
 }
-
 void App::sync_tree() {
     const gui::Projection& p = session_.projection();
     const Entry* selected = session_.selected_entry();
@@ -507,7 +493,8 @@ void App::sync() {
     close_.set_enabled(vault);
     path_.set_text(session_.vault_path());
     sidebar_.set_enabled(vault);
-    clear_.set_enabled(vault && session_.filter().active());
+    tabs_.set_enabled(vault);
+    tabs_.select(session_.axis() == gui::Axis::Persona ? 1 : 0);
     search_.set_enabled(vault);
     if (search_.text() != session_.filter().query) {
         search_.set_text(session_.filter().query);

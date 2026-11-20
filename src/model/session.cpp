@@ -150,26 +150,25 @@ void Session::set_query(std::string query) {
     rebuild_projection();
 }
 
-void Session::set_category_filter(std::optional<std::int64_t> id) {
-    filter_.category = id;
-    rebuild_projection();
+Scope Session::scope() const {
+    if (filter_.favorites_only) {
+        return {Scope::Kind::favorites};
+    }
+    if (filter_.category) {
+        return {Scope::Kind::category, *filter_.category};
+    }
+    if (filter_.tag) {
+        return {Scope::Kind::tag, *filter_.tag};
+    }
+    return {};
 }
 
-void Session::set_tag_filter(std::optional<std::int64_t> id) {
-    filter_.tag = id;
+void Session::set_scope(Scope scope) {
+    filter_.favorites_only = scope.kind == Scope::Kind::favorites;
+    filter_.category = scope.kind == Scope::Kind::category ? std::optional(scope.id) : std::nullopt;
+    filter_.tag = scope.kind == Scope::Kind::tag ? std::optional(scope.id) : std::nullopt;
     rebuild_projection();
 }
-
-void Session::set_favorites_only(bool on) {
-    filter_.favorites_only = on;
-    rebuild_projection();
-}
-
-void Session::clear_filters() {
-    filter_.clear();
-    rebuild_projection();
-}
-
 IdLabels Session::flat_categories() const {
     return flatten_categories(categories_, settings_.category_indent);
 }

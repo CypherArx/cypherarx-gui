@@ -49,6 +49,10 @@ struct Kit {
     const ThemePreset* theme;
 };
 
+inline Role pane_surface(const ThemePreset& theme) {
+    return theme.pane_style == PaneStyle::outlined ? theme.background : theme.pane;
+}
+
 inline lm::text::TextStyle style_of(TypeRole role, bool emphasized = false) {
     return lm::tokens::text_style(lm::tokens::type_style(role, emphasized));
 }
