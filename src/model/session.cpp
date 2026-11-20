@@ -183,8 +183,46 @@ const Category* Session::find_category(std::int64_t id) const {
     return nullptr;
 }
 
+EntryTraits Session::traits(std::string_view type) {
+    if (type == "service") {
+        return {.has_category = true};
+    }
+    if (type == "account") {
+        return {.has_fields = true, .has_login_methods = true, .name_optional = true};
+    }
+    if (type == "child") {
+        return {.has_fields = true};
+    }
+    return {};
+}
+
+std::string Session::entry_title(const Entry& e) const {
+    if (!e.label.empty() || e.entry_type != "account") {
+        return e.label;
+    }
+    const auto other = axis_ == Axis::Persona ? e.parent_id : e.persona_id;
+    return other ? proj_.label_of(other) : std::string(text::no_persona);
+}
+
+std::string Session::caption_of(std::optional<std::int64_t> id) const {
+    const Entry* e = id ? proj_.find(*id) : nullptr;
+    if (!e || e->entry_type != "account") {
+        return proj_.label_of(id);
+    }
+    const std::string name = !e->label.empty() ? e->label
+                             : e->persona_id   ? proj_.label_of(e->persona_id)
+                                               : std::string(text::no_persona);
+    return name + " (" + proj_.label_of(e->parent_id) + ")";
+}
+
 std::string Session::entry_detail(const Entry& e) const {
     std::string detail = e.entry_type;
+    if (e.entry_type == "account") {
+        detail += "  |  " + proj_.label_of(e.parent_id);
+        if (e.persona_id) {
+            detail += " \u00d7 " + proj_.label_of(e.persona_id);
+        }
+    }
     if (e.category_id) {
         if (const Category* c = find_category(*e.category_id)) {
             detail += "  |  " + c->name;
@@ -350,7 +388,7 @@ EntryChoices Session::entry_choices() const {
         } else if (e.entry_type == "persona") {
             c.personas.emplace_back(e.id, e.label);
         } else if (e.entry_type == "account") {
-            c.accounts.emplace_back(e.id, e.label + " (" + proj_.label_of(e.parent_id) + ")");
+            c.accounts.emplace_back(e.id, caption_of(e.id));
         }
     }
     return c;
@@ -388,7 +426,8 @@ Status Session::commit_entry(EntryDraft& d) {
     if (!vault_) {
         return fail(text::err_not_unlocked);
     }
-    if (d.label.empty()) {
+    const EntryTraits kind = traits(d.type);
+    if (d.label.empty() && !kind.name_optional) {
         return fail(text::label_required);
     }
     Entry e = d.editing.value_or(Entry{});
@@ -397,9 +436,13 @@ Status Session::commit_entry(EntryDraft& d) {
     e.parent_id.reset();
     e.persona_id.reset();
     e.is_favorite = d.favorite;
-    e.category_id.reset();
-    if (d.category != 0) {
-        e.category_id = d.category;
+    if (kind.has_category) {
+        e.category_id.reset();
+        if (d.category != 0) {
+            e.category_id = d.category;
+        }
+    } else if (!d.editing) {
+        e.category_id.reset();
     }
     if (!d.new_tag.empty()) {
         if (auto t = vault_->add_tag(d.new_tag)) {
@@ -582,6 +625,10 @@ Status Session::commit_field(const FieldDraft& d, std::span<const std::uint8_t> 
     if (!vault_ || !selected_entry_) {
         return fail(text::select_entry_first);
     }
+    const Entry* owner = selected_entry();
+    if (!d.editing && owner && !traits(owner->entry_type).has_fields) {
+        return fail(text::fields_on_accounts);
+    }
     if (d.label.empty()) {
         return fail(text::label_required);
     }
@@ -718,7 +765,7 @@ Outcome<LoginMethodChoices> Session::login_method_choices() const {
     }
     LoginMethodChoices c;
     c.entry_id = self->id;
-    c.title = self->label;
+    c.title = caption_of(self->id);
     c.via.emplace_back(std::nullopt, text::direct);
     for (const auto& e : entries_) {
         if (e.entry_type != "account" || e.id == self->id) {
@@ -727,7 +774,7 @@ Outcome<LoginMethodChoices> Session::login_method_choices() const {
         if (self->parent_id && e.parent_id && *e.parent_id == *self->parent_id) {
             continue;
         }
-        c.via.emplace_back(e.id, e.label + " (" + proj_.label_of(e.parent_id) + ")");
+        c.via.emplace_back(e.id, caption_of(e.id));
     }
     return c;
 }

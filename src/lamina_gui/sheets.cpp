@@ -151,6 +151,8 @@ EntrySheet::EntrySheet(const Kit& kit, Host& host)
     : Sheet(kit, str::add_entry, kit.cfg->sheet.form_width),
       host_(host),
       label_(panel_.add<TextFieldC>(kit, str::label)),
+      name_(panel_.add<TextFieldC>(kit, str::name_optional)),
+      name_hint_(panel_.add<LabelC>(kit, muted(str::account_name_hint, true))),
       type_(panel_.add<SelectField>(kit, str::type, &ThemePreset::sheet)),
       category_(panel_.add<SelectField>(kit, str::category, &ThemePreset::sheet)),
       service_(panel_.add<SelectField>(kit, str::service, &ThemePreset::sheet)),
@@ -184,10 +186,17 @@ std::string EntrySheet::type() const {
 
 NodePtr EntrySheet::body() {
     std::vector<NodePtr> rows;
-    rows.push_back(label_.node());
-    if (type_.visible()) {
-        rows.push_back(hrow(kit_, {grow(type_.node()), grow(category_.node())}));
+    if (name_.visible()) {
+        rows.push_back(name_.node());
+        rows.push_back(name_hint_.node());
     } else {
+        rows.push_back(label_.node());
+    }
+    if (type_.visible() && category_.visible()) {
+        rows.push_back(hrow(kit_, {grow(type_.node()), grow(category_.node())}));
+    } else if (type_.visible()) {
+        rows.push_back(whole(type_.node()));
+    } else if (category_.visible()) {
         rows.push_back(whole(category_.node()));
     }
     if (service_.visible()) {
@@ -206,8 +215,19 @@ NodePtr EntrySheet::body() {
     return vcol(kit_, std::move(rows));
 }
 
+TextFieldC& EntrySheet::name_field() {
+    return name_.visible() ? name_ : label_;
+}
+
 void EntrySheet::apply_type() {
     const std::string t = type();
+    const gui::EntryTraits kind = gui::Session::traits(t);
+    const std::string typed = name_field().text();
+    name_.set_visible(kind.name_optional);
+    name_hint_.set_visible(kind.name_optional);
+    label_.set_visible(!kind.name_optional);
+    name_field().set_text(typed);
+    category_.set_visible(kind.has_category);
     service_.set_visible(t == "account");
     persona_.set_visible(t == "account");
     account_.set_visible(t == "child");
@@ -272,6 +292,7 @@ void EntrySheet::open(gui::EntryDraft draft) {
                              : add_titles[index_of(str::entry_types, draft_.type)]);
     type_.set_visible(draft_.editing.has_value());
     label_.set_text(draft_.label);
+    name_.set_text(draft_.label);
     type_.set_items(labels(str::entry_types), index_of(str::entry_types, draft_.type));
     category_.set_items(labels(choices_.categories), index_of(choices_.categories, draft_.category));
     service_.set_items(labels(choices_.services), index_of(choices_.services, draft_.service));
@@ -282,14 +303,16 @@ void EntrySheet::open(gui::EntryDraft draft) {
     apply_type();
     refresh_tags();
     show();
-    panel_.focus(label_);
+    panel_.focus(name_field());
     host_.present(*this);
 }
 
 void EntrySheet::submit() {
-    draft_.label = label_.text();
+    draft_.label = name_field().text();
     draft_.type = type();
-    draft_.category = id_at(choices_.categories, category_.index());
+    if (category_.visible()) {
+        draft_.category = id_at(choices_.categories, category_.index());
+    }
     draft_.service = id_at(choices_.services, service_.index());
     draft_.persona = id_at(choices_.personas, persona_.index());
     draft_.account = id_at(choices_.accounts, account_.index());
@@ -671,7 +694,7 @@ void LoginSheet::refresh() {
         ListRow row;
         row.id = m.id;
         row.text = m.method_type;
-        row.cells = {m.linked_entry_id ? host_.session().projection().label_of(m.linked_entry_id)
+        row.cells = {m.linked_entry_id ? host_.session().caption_of(m.linked_entry_id)
                                        : std::string(str::direct),
                      m.notes};
         row.selected = selected_ == m.id;

@@ -7,6 +7,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -39,6 +40,13 @@ struct SessionSettings {
     int clipboard_clear_seconds = 20;
     const char* category_indent = "    ";
     std::uint32_t totp_period_seconds = 30;
+};
+
+struct EntryTraits {
+    bool has_category = false;
+    bool has_fields = false;
+    bool has_login_methods = false;
+    bool name_optional = false;
 };
 
 struct EntryChoices {
@@ -116,6 +124,9 @@ public:
     const std::vector<Tag>& tags() const { return tags_; }
     IdLabels flat_categories() const;
     const Category* find_category(std::int64_t id) const;
+    static EntryTraits traits(std::string_view type);
+    std::string entry_title(const Entry& e) const;
+    std::string caption_of(std::optional<std::int64_t> id) const;
     std::string entry_detail(const Entry& e) const;
 
     const Entry* selected_entry() const;

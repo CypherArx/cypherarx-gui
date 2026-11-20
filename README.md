@@ -169,6 +169,12 @@ Differences from the ImGui front end:
   the vault buttons carry icons. Icon buttons show a tooltip after a short hover.
 - Add opens a menu of what to add (Service, Persona, Account, Child), so the sheet that follows
   has no type field; the type can still be changed when editing.
+- The four kinds of entry are treated by their role, not all alike. Only a service has a
+  category. Fields belong to accounts and children: on a service or a persona Add is disabled
+  and the pane says so, though fields that already exist there can still be edited and deleted.
+  An account's name is optional; left empty, its row and title show its parent on the other
+  axis, the service on the persona axis and the persona on the service axis. These rules live in
+  `Session::traits` in `src/model/`.
 - A field's notes are a column of the field list instead of a tooltip.
 - The TOTP code is updated once a second, next to a countdown ring.
 - Tag chips in the entry sheet take the pointer only.

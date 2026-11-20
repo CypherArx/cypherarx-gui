@@ -80,6 +80,15 @@ int run_selftest() {
         ok = expect(s.projection().visible_count() == 1, "search") && ok;
         s.clear_filters();
 
+        const std::int64_t unnamed = add_entry(s, "account", "", service, persona);
+        ok = expect(unnamed != 0 && s.selected_entry() && s.entry_title(*s.selected_entry()) == "Example",
+                    "an unnamed account shows its service on the persona axis") &&
+             ok;
+        s.select_entry(service);
+        gui::FieldDraft stray = s.new_field_draft();
+        stray.label = "x";
+        ok = expect(!s.commit_field(stray, {}).has_value(), "no fields on a service") && ok;
+
         s.select_entry(account);
         gui::FieldDraft field = s.new_field_draft();
         field.label = "pw";

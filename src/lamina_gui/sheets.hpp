@@ -84,6 +84,7 @@ protected:
 private:
     void open(gui::EntryDraft draft);
     void apply_type();
+    TextFieldC& name_field();
     void refresh_tags();
     void add_tag();
     void submit();
@@ -93,6 +94,8 @@ private:
     gui::EntryDraft draft_;
     gui::EntryChoices choices_;
     TextFieldC& label_;
+    TextFieldC& name_;
+    LabelC& name_hint_;
     SelectField& type_;
     SelectField& category_;
     SelectField& service_;

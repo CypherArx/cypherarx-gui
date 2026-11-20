@@ -439,8 +439,10 @@ void App::sync_tree() {
         ListRow row;
         row.id = id;
         row.depth = depth;
-        row.text = e->label;
-        row.cells = {e->entry_type, p.label_of(p.cross_parent(*e, session_.axis()))};
+        row.text = session_.entry_title(*e);
+        const bool titled_by_cross = e->entry_type == "account" && e->label.empty();
+        row.cells = {e->entry_type,
+                     titled_by_cross ? std::string() : p.label_of(p.cross_parent(*e, session_.axis()))};
         row.expandable = has_kids;
         row.expanded = !collapsed_.contains(id);
         row.dim = !p.is_match(id);
@@ -485,9 +487,14 @@ void App::sync_fields() {
         row.selected = selected && selected->id == f.id;
         rows.push_back(std::move(row));
     }
-    fields_.set_empty_text(entry ? str::no_fields : str::select_entry_first);
+    const bool holds_fields = entry && gui::Session::traits(entry->entry_type).has_fields;
+    fields_.set_empty_text(!entry         ? str::select_entry_first
+                           : holds_fields ? str::no_fields
+                                          : str::fields_on_accounts);
+    add_field_.set_enabled(holds_fields);
     fields_.set_rows(std::move(rows));
-    title_.set_text(entry ? std::string(entry->is_favorite ? str::favorite_marker : "") + entry->label
+    title_.set_text(entry ? std::string(entry->is_favorite ? str::favorite_marker : "") +
+                                session_.entry_title(*entry)
                           : std::string(str::fields));
     detail_.set_text(entry ? session_.entry_detail(*entry) : std::string());
 }
@@ -496,7 +503,6 @@ void App::sync() {
     seen_revision_ = session_.revision();
     dirty_ = false;
     const bool vault = session_.has_vault();
-    const bool entry = session_.selected_entry() != nullptr;
 
     close_.set_enabled(vault);
     path_.set_text(session_.vault_path());
@@ -508,7 +514,6 @@ void App::sync() {
     }
     add_entry_.set_enabled(vault);
     organize_.set_enabled(vault);
-    add_field_.set_enabled(entry);
 
     const bool totp = session_.totp_shown();
     totp_.set_visible(totp);
