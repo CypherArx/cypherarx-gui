@@ -1,3 +1,6 @@
 [submodule "external/cypherarx-core"]
 	path = external/cypherarx-core
 	url = git@github.com:CypherArx/cypherarx-core.git
+[submodule "external/lamina-ui"]
+	path = external/lamina-ui
+	url = git@github.com:Capsicum0907/lamina-ui.git
