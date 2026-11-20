@@ -8,7 +8,7 @@
 #include <string>
 #include <string_view>
 
-#include "app/secret_buffer.hpp"
+#include "model/secret_buffer.hpp"
 
 #include "lamina_gui/controls.hpp"
 

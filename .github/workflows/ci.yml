@@ -35,9 +35,7 @@ jobs:
 
       - name: Selftest (headless)
         shell: bash
-        run: |
-          ./build/cypherarx_gui.exe --selftest
-          ./build/cypherarx_gui_lamina.exe --selftest
+        run: ./build/cypherarx_gui.exe --selftest
 
   asan:
     name: build & selftest (MSVC AddressSanitizer)
@@ -70,6 +68,4 @@ jobs:
 
       - name: Selftest (headless)
         shell: bash
-        run: |
-          ./build/cypherarx_gui.exe --selftest
-          ./build/cypherarx_gui_lamina.exe --selftest
+        run: ./build/cypherarx_gui.exe --selftest

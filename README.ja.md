@@ -2,13 +2,9 @@
 
 [English version / 英語版はこちら](README.md)
 
-**CypherArx** のデスクトップ GUI。`cypherarx-core` の上に構築しています。同じコアの上に表示側が
-2 つあり、それぞれ別の実行ファイルになります。
-
-| 実行ファイル | ツールキット | ソース |
-| --- | --- | --- |
-| `cypherarx_gui` | Dear ImGui（Win32 ＋ DirectX 11） | `src/main.cpp`、`src/app/`、`src/platform/` |
-| `cypherarx_gui_lamina` | [lamina-ui](https://github.com/Capsicum0907/lamina-ui)（Material 3 Expressive、SDL3 ＋ ThorVG） | `src/lamina_gui/`、`src/model/` |
+**CypherArx** のデスクトップ GUI。`cypherarx-core` の上に構築し、
+[lamina-ui](https://github.com/Capsicum0907/lamina-ui)（SDL3 ＋ ThorVG の上の Material 3 Expressive）で
+描いています。
 
 > **状態: プレアルファ、一般利用不可。** 開発中は非公開です。
 
@@ -17,90 +13,79 @@
 います。GUI は素の C++ でコアを直接リンクするため、秘密情報が言語境界を越えることはなく、
 コアの保護メモリ（`Secret`）をそのまま使えます。
 
+2026 年 11 月までは Dear ImGui 版がここにありました。git の履歴に残っています。
+
 ## ツールチェーン
 
 MSVC（Visual Studio 2022）＋ CMake ＋ Ninja ＋ vcpkg（マニフェストモード）。`cypherarx-core` と
-同じです。依存は vcpkg から取得します。コア用の `libsodium` と `sqlite3`、ImGui 版用の `imgui`
-（Win32/DX11 バインディングと FreeType）、lamina-ui 用の `abseil`・`harfbuzz`・`sdl3`・`thorvg`
-です。lamina-ui 本体は git サブモジュール `external/lamina-ui` として取り込んでいます。
+同じです。依存は vcpkg から取得します。コア用の `libsodium` と `sqlite3`、lamina-ui 用の
+`abseil`・`harfbuzz`・`sdl3`・`thorvg` です。lamina-ui 本体は git サブモジュール
+`external/lamina-ui` として取り込んでいます。
 
 ## ビルド
 
-C++23 コンパイラ、CMake 3.25 以上、Ninja、vcpkg（`VCPKG_ROOT` 設定済み）が必要です。`cl` が
-`PATH` にあるよう、Visual Studio の開発者シェルから構成してください。クローン後にサブモジュールを
-取得します。
+C++23 コンパイラ、CMake 3.25 以上、Ninja、vcpkg（`VCPKG_ROOT` 設定済み）、Python 3 が必要です。
+`cl` が `PATH` にあるよう、Visual Studio の開発者シェルから構成してください。クローン後に
+サブモジュールを取得します。
 
 ```sh
 git submodule update --init --recursive
+python -m pip install -r external/lamina-ui/tools/icon-subset/requirements.txt
 cmake --preset default
 cmake --build --preset default
 ```
 
-既定では両方の版をビルドします。`-DCYPHERARX_GUI_IMGUI=OFF` か `-DCYPHERARX_GUI_LAMINA=OFF` で
-片方を外せます。
+Python はアイコンのために使います。GUI が使う Material Symbols は `CMakeLists.txt` の
+`lamina_add_resources` に並べてあり、ビルドが lamina-ui の同梱フォントからその分だけ切り出して
+（`pip` の行で入る fontTools と brotli を使います）実行ファイルに組み込みます。そのため素材の
+フォルダーは要りません。
 
-ウィンドウ無しのスモークテスト:
+`build/cypherarx_gui` で起動します。ウィンドウ無しのスモークテストは次のとおりです。
 
 ```sh
 ./build/cypherarx_gui --selftest
-./build/cypherarx_gui_lamina --selftest
 ```
 
-1 つ目は、コアがリンクされていること（金庫・エントリ・フィールドの往復）を確かめます。2 つ目は
-`src/model/` のモデル層を動かします。金庫を作り、サービス・名義・アカウントを追加し、両方の軸と
-検索を確かめ、フィールドを追加してコピーし、金庫を閉じるとクリップボードが消えることを確かめます。
-
-lamina-ui 版はアイコンを埋め込みます。使う Material Symbols は `CMakeLists.txt` の
-`lamina_add_resources` に並べてあり、ビルドが lamina-ui の同梱フォントからその分だけ切り出して
-実行ファイルに組み込みます。そのため素材のフォルダーは要りません。この段階には、fontTools と
-brotli の入った Python 3 が要ります。
-
-```sh
-python -m pip install -r external/lamina-ui/tools/icon-subset/requirements.txt
-```
+スモークテストは `src/model/` のモデル層を動かします。金庫を作り、サービス・名義・アカウントを
+追加し、両方の軸、検索、エントリの種類ごとの決まりを確かめ、フィールドを追加してコピーし、金庫を
+閉じるとクリップボードが消えることを確かめます。
 
 ## CI
 
-`.github/workflows/ci.yml` は `windows-latest` で MSVC ＋ vcpkg によりビルドし、2 つの
-`--selftest` を実行します。通常ビルドと、MSVC AddressSanitizer（`/fsanitize=address`、
-RelWithDebInfo）の 2 本。コアは非公開のサブモジュールなので、リポジトリシークレット
-`CORE_SUBMODULE_TOKEN`（`cypherarx-core` の内容を読み取れる細粒度の個人アクセストークン）で
-チェックアウトします。このシークレットが無いとチェックアウトで失敗します。
+`.github/workflows/ci.yml` は `windows-latest` で MSVC ＋ vcpkg によりビルドし `--selftest` を
+実行します。通常ビルドと、MSVC AddressSanitizer（`/fsanitize=address`、RelWithDebInfo）の 2 本。
+コアは非公開のサブモジュールなので、リポジトリシークレット `CORE_SUBMODULE_TOKEN`
+（`cypherarx-core` の内容を読み取れる細粒度の個人アクセストークン）でチェックアウトします。
+このシークレットが無いとチェックアウトで失敗します。
 
 ## 構成
 
 ```
-src/strings.hpp                  UI 文言の全部（両方の版）
-src/app/projection.{hpp,cpp}     片方の軸（service / persona）のツリー構築と、検索/カテゴリ/タグの絞り込み（両方の版）
-src/app/secret_buffer.hpp        保護メモリ上の固定長テキストバッファ（パスワード・秘密値の入力用。両方の版）
+src/strings.hpp                  UI 文言の全部
 
-src/main.cpp                     ImGui: 入口、--selftest
-src/config.hpp                   ImGui: 調整可能な値の全部（ウィンドウ・フォント・配色・ペイン比率・クリップボード・KDF プリセット・バッファ長）
-src/platform/                    ImGui: Win32 ウィンドウ＋DirectX 11 デバイス、ネイティブのファイルダイアログ、ImGui コンテキスト/フォント/スタイル
-src/app/app.{hpp,cpp}            ImGui: アプリ状態と毎フレームの描画（サイドバー、ペイン、モーダルダイアログ）
-src/app/clipboard_guard.*        ImGui: 値をクリップボードにコピーし、未変更なら一定時間後に消去
+src/model/session.{hpp,cpp}      ツールキットを持たないアプリ本体（金庫・選択・絞り込み・エントリ/フィールド/カテゴリ/タグ/ログイン方法の操作・TOTP・エントリの種類ごとの決まり）
+src/model/projection.{hpp,cpp}   片方の軸（service / persona）のツリー構築と、検索/カテゴリ/タグの絞り込み
+src/model/timed_clipboard.*      小さなクリップボードの口の向こうで行う、時間で消すコピー
+src/model/secret_buffer.hpp      保護メモリ上の固定長テキストバッファ（パスワード・秘密値の入力用）
 
-src/model/session.{hpp,cpp}      lamina: ツールキットを持たないアプリ本体（金庫・選択・絞り込み・エントリ/フィールド/カテゴリ/タグ/ログイン方法の操作・TOTP）
-src/model/timed_clipboard.*      lamina: 小さなクリップボードの口の向こうで行う、時間で消すコピー
-src/platform/file_dialog*        lamina: ネイティブの開く/保存ダイアログ
-src/lamina_gui/config.hpp        lamina: 調整可能な値の全部（ウィンドウ・配色の元の色・寸法・アイコン・クリップボード・KDF プリセット・バッファ長）
-src/lamina_gui/controls.*        lamina: 部品の共通の口、入力とフォーカスを振り分けるパネル、lamina-ui の部品の包み
-src/lamina_gui/list_view.*       lamina: 送れる一覧・木・表の行
-src/lamina_gui/select_field.*    lamina: 選択欄（ドロップダウン）
-src/lamina_gui/secret_field.*    lamina: 値を保護メモリに持つ入力欄（伏せ字と表示の切り替え）
-src/lamina_gui/sheet.*           lamina: フォームを載せるモーダルのシートと、lamina-ui のダイアログのモーダル化
-src/lamina_gui/sheets.*          lamina: パスワード・エントリ・フィールド・整理・ログイン方法の各シート
-src/lamina_gui/app.*             lamina: 3 ペインのウィンドウ、入力の振り分け、フレームの繰り返し
-src/lamina_gui/main.cpp          lamina: 入口、--selftest
+src/platform/file_dialog*        ネイティブの開く/保存ダイアログ
+
+src/lamina_gui/config.hpp        調整可能な値の全部（ウィンドウ・テーマ・寸法・アイコン・クリップボード・KDF プリセット・バッファ長）
+src/lamina_gui/controls.*        部品の共通の口、入力とフォーカスを振り分けるパネル、lamina-ui の部品の包み、ツールチップ
+src/lamina_gui/list_view.*       送れる一覧・木・表の行と、行の上の操作
+src/lamina_gui/select_field.*    選択欄（ドロップダウン）
+src/lamina_gui/secret_field.*    値を保護メモリに持つ入力欄（伏せ字と表示の切り替え）
+src/lamina_gui/sheet.*           フォームを載せるモーダルのシートと、lamina-ui のダイアログとメニューのモーダル化
+src/lamina_gui/sheets.*          パスワード・エントリ・フィールド・整理・ログイン方法の各シート
+src/lamina_gui/app.*             3 ペインのウィンドウ、入力の振り分け、フレームの繰り返し
+src/lamina_gui/main.cpp          入口、--selftest
 ```
 
-配色・寸法・フォントパス・クリップボードの消去時間・Argon2id プリセットはすべて各版の
-`config.hpp` にあり、描画コードの中に直接は書きません。UI 文言も同じ理由（と、後で翻訳するときに
-1 ファイルで済むように）で `strings.hpp` に置いています。
+配色・寸法・クリップボードの消去時間・Argon2id プリセットはすべて `config.hpp` にあり、描画コードの
+中に直接は書きません。UI 文言も同じ理由（と、後で翻訳するときに 1 ファイルで済むように）で
+`strings.hpp` に置いています。
 
 ## 現時点でできること
-
-以下はどちらの版でもできます。
 
 - マスターパスワードで金庫（`*.cax`）を作成／オープン。パスワードは保護メモリに入力され、鍵導出後に
   消去されます。鍵導出はワーカースレッドで行い、その間はスピナーを表示します。
@@ -112,77 +97,68 @@ src/lamina_gui/main.cpp          lamina: 入口、--selftest
 - 検索（ラベル／表示名／URL、ASCII は大文字小文字を無視）と、カテゴリ（サブカテゴリ含む）・タグ・
   お気に入りによる絞り込み。一致したエントリは祖先と子孫をツリーに残し、自身は一致しない祖先は
   薄く表示します。
-- エントリの追加／編集／削除。account はサービスと（任意で）名義を選び、child は親 account を
-  選びます。サービスが無いうちは account を、account が無いうちは child を作れません。各エントリに
-  カテゴリ・タグ・お気に入り印を付けられます。
-- Organize ダイアログ: カテゴリ（プリセットは読み取り専用。カスタムは入れ子・改名・削除可）と
-  タグ（改名・削除）。カテゴリ名・タグ名は保存時に暗号化されます。
-- フィールドの追加／編集／削除（`text` / `password` / `totp`）。値は保護メモリで編集し、
-  `password` はマスク表示＋表示切替＋生成ボタン付き。
-- フィールド値のコピー。設定した秒数の後、クリップボードがその値のままなら自動で消去。
-- TOTP: 残り秒数付きのコードを表示。パネルを閉じるとデコード済みの鍵を消去。
-- ログイン方法（参照リンク層）: account ごとにログイン手段を追加／編集／削除。「via」は
-  *別サービス* の account に限定（自己参照は構造的に不可能）。
-- 削除は確認ダイアログ（既定 No）を経て、コア側は論理削除。
-
-未実装: OS キーリングによるセッション継続、アプリ内ブラウザ、ファビコン、インポート。
-
-## lamina-ui 版
-
-`cypherarx_gui_lamina` は、同じアプリを lamina-ui で描いたものです。色の役割・文字の段階・
-角の大きさ・ばねはすべて lamina-ui のトークンから取り、配色は `src/lamina_gui/config.hpp` の
-元の色 1 つから作ります。ウィンドウは lamina-ui が自分で描くタイトルバーを使います
-（`WindowConfig::client_title_bar`。これを切ったとき、または lamina-ui が描けない環境では、
-OS の枠のままです）。ウィンドウが描き直すのは、入力があったときと何かが動いている間だけで、
-カーソルの点滅・TOTP の残り秒数・クリップボードの消去時刻のためには自分で起きます。
-
-ロジックは `src/model/` にあり、ツールキットのことを何も知りません。`src/lamina_gui/` はそれを
-部品に置き換えるだけです。ボタン・アイコンボタン・チェックボックス・入力欄・ラベル・進み具合の輪・
-スクロールする範囲・フォーカスの順番・テーマのメニュー・確認と知らせのダイアログは lamina-ui の
-部品です。
-lamina-ui 0.1.0 には一覧・木・選択欄・伏せ字の入力・中身を持てるダイアログが無いので、それらは
-lamina-ui の描画面・文字の配置・トークンの上に、ここで書いています。
-
-- `ListView`: 列・見出し・字下げ・開閉を持つ行。サイドバー、エントリツリー、フィールドの一覧、
-  シートの中の一覧、選択欄のポップアップに使います。
-- `SelectField`: 枠線つきの欄で、送れるポップアップを開きます。長い一覧でもウィンドウに収まります。
-- `SecretField`: マスターパスワードとフィールドの値は保護メモリ（`SecretBuffer`）から出ません。
-  伏せ字のときは点を描くだけで、文字の配置そのものを行いません。
-- `Sheet`: フォームを載せるモーダルの面。
-
-ImGui 版との違い:
-
-- 秘密の入力欄は、カーソルの移動（矢印・Home・End・クリック）、削除、貼り付けができますが、
-  選択・コピー・切り取りはありません。lamina-ui 自身の入力欄（ラベル・メモ・検索に使用）には
-  すべてあり、取り消しもできます。
-- エントリツリーとフィールドの一覧はキーボードに応じます。矢印で選択を動かし、← と → で畳んで
-  開き、Enter で編集のシートを開きます。ダブルクリックでも編集のシートを開きますが、子を持つ
-  エントリでは代わりに畳むか開きます。`Ctrl+F` で検索欄にフォーカスを移します。
-- 1 つのエントリや 1 つのフィールドへの操作は、その行に置きます。行にポインターを乗せるか
-  キーボードで移ると、右端にアイコンのボタンが出ます。エントリにはログイン方法（account のみ）・
-  編集・削除、フィールドにはコピー・TOTP（`totp` のフィールドのみ）・編集・削除です。キーボードの
-  Delete は、カーソルのある行を削除します。一覧の上に残るのは追加と整理だけで、金庫のボタンには
-  アイコンが付きます。アイコンのボタンは、少し乗せているとツールチップを出します。
-- 追加は、何を追加するか（Service・Persona・Account・Child）のメニューを開きます。そのため続く
-  シートには種別の欄がありません。種別は編集のときに変えられます。
+- エントリの追加／編集／削除。追加は、何を追加するか（Service・Persona・Account・Child）の
+  メニューを開きます。account はサービスと（任意で）名義を選び、child は親 account を選びます。
+  サービスが無いうちは account を、account が無いうちは child を作れません。
 - エントリの 4 つの種類を、一律ではなく役割ごとに扱います。カテゴリを持つのは service だけです。
   フィールドは account と child のものです。service と persona では追加が無効になり、ペインに
   その旨を出します。すでにそこにあるフィールドは、編集と削除ができます。account の名前は任意です。
   空のときは、行と見出しに反対側の軸の親を出します。名義軸ではサービス、サービス軸では名義です。
-  この決まりは `src/model/` の `Session::traits` にあります。
-- フィールドのメモは、ツールチップではなくフィールドの一覧の列に出します。
-- TOTP のコードは 1 秒ごとに更新し、残り時間の輪を添えます。
-- エントリのシートのタグのチップは、ポインターでだけ操作できます。
-- ウィンドウを閉じるときにもクリップボードを消します。
-- ツールバーの端のパレットのボタンで、テーマのメニューを開きます。*Dark, outlined*（地は黒、
-  ペインは線で囲む、塗ったボタンは 1 つ）、*Dark, tonal*（無彩色の灰色、ペインは一段上の面）、
-  *Light* の 3 つです。テーマは `src/lamina_gui/config.hpp` の `ThemePreset` 1 つ分のデータで、
-  配色の種類、地・ペイン・シート・ポップアップの色の役割、ペインを塗るか線で囲むか、主なボタンの
-  種類を持ちます。どのテーマも同じ元の色から作ります。起動時は先頭のテーマで、選んだ結果は
-  保存しません。
+  この決まりは `Session::traits` にあります。
+- 1 つのエントリや 1 つのフィールドへの操作は、その行に置きます。行にポインターを乗せるか
+  キーボードで移ると、右端にアイコンのボタンが出ます。エントリにはログイン方法（account のみ）・
+  編集・削除、フィールドにはコピー・TOTP（`totp` のフィールドのみ）・編集・削除です。アイコンの
+  ボタンは、少し乗せているとツールチップを出します。
+- 整理のシート: カテゴリ（プリセットは読み取り専用。カスタムは入れ子・改名・削除可）とタグ
+  （改名・削除）。カテゴリ名・タグ名は保存時に暗号化されます。
+- フィールドは `text` / `password` / `totp`。値は保護メモリで編集し、`password` はマスク表示＋
+  表示切替＋生成ボタン付き。
+- フィールド値のコピー: 設定した秒数の後、クリップボードがその値のままなら自動で消去します。
+  ウィンドウを閉じるときにも消します。
+- TOTP: コードと残り時間の輪を出し、1 秒ごとに更新します。パネルを閉じるとデコード済みの鍵を
+  消去します。
+- ログイン方法（参照リンク層）: account ごとにログイン手段を追加／編集／削除。「via」は
+  *別サービス* の account に限定（自己参照は構造的に不可能）。
+- 削除は確認ダイアログ（既定 No）を経て、コア側は論理削除。
+- キーボード: Tab で部品の間を移ります。エントリツリーとフィールドの一覧では、矢印で選択を
+  動かし、← と → で畳んで開き、Enter で編集のシートを開き、Delete で削除します。ダブルクリックでも
+  編集のシートを開きますが、子を持つエントリでは代わりに畳むか開きます。`Ctrl+F` で検索欄に
+  フォーカスを移します。
+- テーマ: パレットのボタンでメニューを開きます。*Dark, outlined*（地は黒、ペインは線で囲む、
+  塗ったボタンは 1 つ）、*Dark, tonal*（無彩色の灰色、ペインは一段上の面）、*Light* の 3 つです。
+  テーマは `config.hpp` の `ThemePreset` 1 つ分のデータで、配色の種類、地・ペイン・シート・
+  ポップアップの色の役割、ペインを塗るか線で囲むか、主なボタンの種類を持ちます。どのテーマも
+  同じ元の色から作ります。起動時は先頭のテーマで、選んだ結果は保存しません。
 
-ImGui 版は今も `src/app/app.cpp` に自分のロジックを持っていて、`src/model/` には載せ替えて
-いません。
+未実装: OS キーリングによるセッション継続、アプリ内ブラウザ、ファビコン、インポート。
+
+## 組み立て
+
+ロジックは `src/model/` にあり、ツールキットのことを何も知りません。失敗はダイアログを開かずに
+文言として返します。`src/lamina_gui/` はそれを部品に置き換えるだけです。
+
+色の役割・文字の段階・角の大きさ・ばねはすべて lamina-ui のトークンから取ります。ウィンドウは
+lamina-ui が自分で描くタイトルバーを使います（`WindowConfig::client_title_bar`。これを切ったとき、
+または lamina-ui が描けない環境では、OS の枠のままです）。ウィンドウが描き直すのは、入力が
+あったときと何かが動いている間だけで、カーソルの点滅・ツールチップ・TOTP の残り秒数・
+クリップボードの消去時刻のためには自分で起きます。
+
+ボタン・アイコンボタン・チェックボックス・入力欄・ラベル・進み具合の輪・スクロールする範囲・
+フォーカスの順番・メニュー・確認と知らせのダイアログは lamina-ui の部品です。lamina-ui には
+まだ一覧・木・選択欄・伏せ字の入力・ツールチップ・中身を持てるダイアログが無いので、それらは
+lamina-ui の描画面・文字の配置・トークンの上に、ここで書いています。
+
+- `ListView`: 列・見出し・字下げ・開閉・行の上の操作を持つ行。サイドバー、エントリツリー、
+  フィールドの一覧、シートの中の一覧、選択欄のポップアップに使います。
+- `SelectField`: 枠線つきの欄で、送れるポップアップを開きます。長い一覧でもウィンドウに収まります。
+- `SecretField`: マスターパスワードとフィールドの値は保護メモリ（`SecretBuffer`）から出ません。
+  伏せ字のときは点を描くだけで、文字の配置そのものを行いません。カーソルの移動（矢印・Home・
+  End・クリック）、削除、貼り付けができますが、選択・コピー・切り取りはありません。ラベル・メモ・
+  検索に使う lamina-ui 自身の入力欄にはすべてあり、取り消しもできます。
+- `Sheet`: フォームを載せるモーダルの面。
+- `HoverTip` と `paint_tooltip`: アイコンのボタンと行の操作のツールチップ。
+
+エントリのシートのタグのチップは、ポインターでだけ操作できます。
 
 ## 設計
 

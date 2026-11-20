@@ -17,7 +17,7 @@
 #include "cypherarx/secret.hpp"
 #include "cypherarx/vault.hpp"
 
-#include "app/projection.hpp"
+#include "model/projection.hpp"
 #include "model/timed_clipboard.hpp"
 
 namespace cypherarx::gui {

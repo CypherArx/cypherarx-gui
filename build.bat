@@ -1,5 +1,5 @@
 @echo off
-rem Configure + build the CypherArx GUI (Dear ImGui, MSVC + vcpkg).
+rem Configure + build the CypherArx GUI (lamina-ui, MSVC + vcpkg).
 setlocal
 call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" >nul
 set "VCPKG_ROOT=C:\dev\vcpkg"

@@ -2,14 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "cypherarx-gui",
   "version": "0.0.1",
-  "description": "Desktop GUIs for CypherArx (Dear ImGui and lamina-ui front ends on cypherarx-core).",
+  "description": "Desktop GUI for CypherArx (lamina-ui on cypherarx-core).",
   "dependencies": [
     "libsodium",
     "sqlite3",
-    {
-      "name": "imgui",
-      "features": ["win32-binding", "dx11-binding", "freetype"]
-    },
     "abseil",
     {
       "name": "harfbuzz",
