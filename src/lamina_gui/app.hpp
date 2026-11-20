@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "lamina/motion/animated.hpp"
 #include "lamina/widgets/title_bar.hpp"
 #include "lamina_sdl3/window.hpp"
 
@@ -55,6 +56,7 @@ private:
     void sweep();
     Modal* top_modal() const;
     void choose_vault(gui::UnlockMode mode);
+    void set_dark(bool dark);
     double bar_height() const;
     bool handle_title_bar(const PointerEvent& e);
 
@@ -63,6 +65,9 @@ private:
     Kit kit_;
     lm::widgets::TitleBar title_bar_;
     ColorScheme scheme_;
+    ColorScheme scheme_from_;
+    ColorScheme scheme_to_;
+    lm::motion::Animated theme_mix_;
     WindowClipboard clipboard_;
     gui::Session session_;
     Panel base_;
@@ -74,6 +79,7 @@ private:
     ButtonC& open_;
     ButtonC& close_;
     LabelC& path_;
+    ToggleIconC& dark_;
     ListView& sidebar_;
     ButtonC& clear_;
     TextFieldC& search_;

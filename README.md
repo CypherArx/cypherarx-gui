@@ -159,6 +159,8 @@ Differences from the ImGui front end:
 - The TOTP code is updated once a second, next to a countdown ring.
 - Tag chips in the entry sheet take the pointer only.
 - The clipboard is also cleared when the window closes.
+- The button at the end of the toolbar switches between the dark and the light scheme, both
+  built from the same seed colour. The window starts dark; the choice is not saved.
 
 The ImGui front end still carries its own copy of the logic in `src/app/app.cpp`; it has not
 been moved onto `src/model/`.

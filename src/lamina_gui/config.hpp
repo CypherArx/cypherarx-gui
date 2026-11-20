@@ -143,6 +143,7 @@ struct IconConfig {
     lamina::icons::Symbol remove = lamina::icons::Symbol::delete_;
     lamina::icons::Symbol copy = lamina::icons::Symbol::content_copy;
     lamina::icons::Symbol search = lamina::icons::Symbol::search;
+    lamina::icons::Symbol dark_theme = lamina::icons::Symbol::dark_mode;
 };
 
 struct ClipboardConfig {

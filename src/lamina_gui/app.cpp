@@ -5,6 +5,7 @@
 #include <cmath>
 #include <utility>
 
+#include "lamina/tokens/motion.hpp"
 #include "lamina/tokens/title_bar.hpp"
 #include "lamina_sdl3/app.hpp"
 #include "lamina_sdl3/resources.hpp"
@@ -77,6 +78,9 @@ App::App()
       kit_{lm::sdl3::system_font_stack(), lm::sdl3::bundled_icon_font(), &window_.clipboard(), &cfg_},
       title_bar_({cfg_.window.title, kit_.icons, nullptr, cfg_.theme.background}, kit_.fonts),
       scheme_(lm::color::spec_2025().build(cfg_.theme.scheme)),
+      scheme_from_(scheme_),
+      scheme_to_(scheme_),
+      theme_mix_(1.0, lm::tokens::motion_scheme.slow_effects()),
       clipboard_(window_.clipboard()),
       session_(session_settings(cfg_)),
       base_(kit_),
@@ -87,6 +91,7 @@ App::App()
       open_(base_.add<ButtonC>(kit_, ButtonSpec{str::open_vault, ButtonStyle::tonal})),
       close_(base_.add<ButtonC>(kit_, ButtonSpec{str::close_vault, ButtonStyle::outlined})),
       path_(base_.add<LabelC>(kit_, LabelSpec{"", TypeRole::body_medium, Role::on_surface_variant})),
+      dark_(base_.add<ToggleIconC>(kit_, cfg_.icons.dark_theme)),
       sidebar_(base_.add<ListView>(kit_)),
       clear_(base_.add<ButtonC>(kit_, ButtonSpec{str::clear_filters, ButtonStyle::text})),
       search_(base_.add<TextFieldC>(kit_, str::search_hint)),
@@ -149,6 +154,15 @@ bool App::handle_title_bar(const PointerEvent& e) {
     return e.action == PointerAction::down && e.y_dp < bar;
 }
 
+void App::set_dark(bool dark) {
+    lm::color::SchemeOptions options = cfg_.theme.scheme;
+    options.dark = dark;
+    scheme_from_ = scheme_;
+    scheme_to_ = lm::color::spec_2025().build(options);
+    theme_mix_.snap_to(0.0);
+    theme_mix_.animate_to(1.0);
+}
+
 void App::choose_vault(gui::UnlockMode mode) {
     const gui::platform::FileDialogOptions options{cfg_.file_filter, cfg_.vault_extension};
     auto file = mode == gui::UnlockMode::Create ? gui::platform::choose_file_to_save(options)
@@ -163,6 +177,8 @@ void App::wire() {
     new_.on_click = [this] { choose_vault(gui::UnlockMode::Create); };
     open_.on_click = [this] { choose_vault(gui::UnlockMode::Open); };
     close_.on_click = [this] { session_.close_vault(clipboard_); };
+    dark_.set_checked(cfg_.theme.scheme.dark);
+    dark_.on_change = [this](bool dark) { set_dark(dark); };
     password_sheet_.on_started = [this] {
         busy_sheet_.open(session_.unlock_mode() == gui::UnlockMode::Create ? str::new_vault
                                                                            : str::open_vault,
@@ -231,7 +247,7 @@ NodePtr App::build_layout() {
     const auto center = lm::layout::CrossAlign::center;
     const auto padding = lm::layout::Insets::all(t.pane_padding);
 
-    auto toolbar = lm::layout::row({new_.node(), open_.node(), close_.node(), grow(path_.node())});
+    auto toolbar = lm::layout::row({new_.node(), open_.node(), close_.node(), grow(path_.node()), dark_.node()});
     toolbar->spacing(t.control_gap).cross_align(center);
 
     auto sidebar = lm::layout::column({grow(sidebar_.node()), clear_.node()});
@@ -545,6 +561,9 @@ Argb App::update(const lm::sdl3::Frame& frame) {
         m->step(frame.dt_seconds);
     }
     title_bar_.step(frame.dt_seconds);
+    theme_mix_.step(frame.dt_seconds);
+    scheme_ = theme_mix_.settled() ? scheme_to_
+                                   : lm::color::mix(scheme_from_, scheme_to_, theme_mix_.value());
     sweep();
 
     const Modal* top = top_modal();
@@ -573,7 +592,7 @@ Argb App::update(const lm::sdl3::Frame& frame) {
 bool App::paint(Canvas& canvas) {
     base_.paint(canvas, scheme_);
     base_.paint_overlays(canvas, scheme_);
-    bool animating = base_.animating() || session_.unlocking();
+    bool animating = base_.animating() || session_.unlocking() || !theme_mix_.settled();
     for (const Modal* m : modals_) {
         m->paint(canvas, scheme_);
         animating = animating || m->animating();
