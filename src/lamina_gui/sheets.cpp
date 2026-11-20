@@ -28,6 +28,14 @@ NodePtr grow(NodePtr node, double weight = 1.0) {
     return node;
 }
 
+NodePtr whole(NodePtr node) {
+    node->weight = 0.0;
+    return node;
+}
+
+constexpr std::array<const char*, 4> add_titles = {str::add_service, str::add_persona, str::add_account,
+                                                   str::add_child};
+
 std::vector<std::string> labels(const gui::IdLabels& items) {
     std::vector<std::string> out;
     out.reserve(items.size());
@@ -177,7 +185,11 @@ std::string EntrySheet::type() const {
 NodePtr EntrySheet::body() {
     std::vector<NodePtr> rows;
     rows.push_back(label_.node());
-    rows.push_back(hrow(kit_, {grow(type_.node()), grow(category_.node())}));
+    if (type_.visible()) {
+        rows.push_back(hrow(kit_, {grow(type_.node()), grow(category_.node())}));
+    } else {
+        rows.push_back(whole(category_.node()));
+    }
     if (service_.visible()) {
         rows.push_back(hrow(kit_, {grow(service_.node()), grow(persona_.node())}));
     }
@@ -229,8 +241,19 @@ void EntrySheet::add_tag() {
     refresh_tags();
 }
 
-void EntrySheet::open_new() {
-    open(host_.session().new_entry_draft());
+void EntrySheet::open_new(const std::string& type) {
+    const gui::EntryChoices choices = host_.session().entry_choices();
+    if (type == "account" && choices.services.empty()) {
+        host_.message(str::need_service_first);
+        return;
+    }
+    if (type == "child" && choices.accounts.empty()) {
+        host_.message(str::need_account_first);
+        return;
+    }
+    gui::EntryDraft draft = host_.session().new_entry_draft();
+    draft.type = type;
+    open(std::move(draft));
 }
 
 void EntrySheet::open_selected() {
@@ -245,7 +268,9 @@ void EntrySheet::open_selected() {
 void EntrySheet::open(gui::EntryDraft draft) {
     draft_ = std::move(draft);
     choices_ = host_.session().entry_choices();
-    set_title(draft_.editing ? str::edit_entry : str::add_entry);
+    set_title(draft_.editing ? str::edit_entry
+                             : add_titles[index_of(str::entry_types, draft_.type)]);
+    type_.set_visible(draft_.editing.has_value());
     label_.set_text(draft_.label);
     type_.set_items(labels(str::entry_types), index_of(str::entry_types, draft_.type));
     category_.set_items(labels(choices_.categories), index_of(choices_.categories, draft_.category));

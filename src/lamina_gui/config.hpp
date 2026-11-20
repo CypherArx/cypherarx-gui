@@ -87,6 +87,8 @@ struct ThemeConfig {
     std::size_t initial = 0;
     lamina::color::Role pane_outline = lamina::color::Role::outline_variant;
     double pane_outline_width = 1.0;
+    lamina::color::Role disabled_container = lamina::color::Role::surface_container_highest;
+    lamina::color::Role disabled_content = lamina::color::Role::on_surface;
     lamina::color::Role scrim = lamina::color::Role::scrim;
     double scrim_opacity = 0.32;
     double disabled_opacity = 0.38;
@@ -117,6 +119,8 @@ struct ListConfig {
     double row_inset_y = 1.0;
     double row_radius = 8.0;
     double cursor_ring = 2.0;
+    double action_icon = 20.0;
+    double action_inset = 2.0;
     double divider = 1.0;
     lamina::tokens::TypeRole text = lamina::tokens::TypeRole::body_medium;
     lamina::tokens::TypeRole section = lamina::tokens::TypeRole::label_medium;
@@ -180,6 +184,16 @@ struct TotpConfig {
     lamina::tokens::TypeRole remaining = lamina::tokens::TypeRole::body_medium;
 };
 
+struct TooltipConfig {
+    double delay_seconds = 0.5;
+    double height = 24.0;
+    double padding = 8.0;
+    double radius = 4.0;
+    double gap = 4.0;
+    double window_margin = 4.0;
+    lamina::tokens::TypeRole type = lamina::tokens::TypeRole::body_small;
+};
+
 struct SpinnerConfig {
     double diameter = 40.0;
     double progress = 0.7;
@@ -234,6 +248,7 @@ struct Config {
     ChipConfig chip;
     SheetConfig sheet;
     TotpConfig totp;
+    TooltipConfig tooltip;
     SpinnerConfig spinner;
     IconConfig icons;
     ClipboardConfig clipboard;

@@ -1,6 +1,7 @@
 #include "lamina_gui/app.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <utility>
@@ -22,6 +23,14 @@ using lm::tokens::ButtonStyle;
 constexpr int unsized_pixels = 1;
 
 enum SidebarGroup { group_view = 1, group_favorites, group_category, group_tag };
+
+enum EntryAction : std::size_t { entry_login, entry_edit, entry_delete };
+
+enum FieldAction : std::size_t { field_copy, field_totp, field_edit, field_delete };
+
+constexpr unsigned without(std::size_t action) {
+    return ~(1u << action);
+}
 
 class FixedWidth final : public lm::layout::Node {
 public:
@@ -91,33 +100,33 @@ App::App()
       sidebar_pane_(base_.add<PaneC>(kit_)),
       center_pane_(base_.add<PaneC>(kit_)),
       detail_pane_(base_.add<PaneC>(kit_)),
-      new_(base_.add<ButtonC>(kit_, ButtonSpec{str::new_vault, kit_.theme->vault_action})),
-      open_(base_.add<ButtonC>(kit_, ButtonSpec{str::open_vault, kit_.theme->vault_action})),
-      close_(base_.add<ButtonC>(kit_, ButtonSpec{str::close_vault, ButtonStyle::outlined})),
+      new_(base_.add<ButtonC>(kit_, ButtonSpec{str::new_vault, kit_.theme->vault_action, cfg_.icons.new_vault})),
+      open_(base_.add<ButtonC>(kit_, ButtonSpec{str::open_vault, kit_.theme->vault_action, cfg_.icons.open_vault})),
+      close_(base_.add<ButtonC>(kit_, ButtonSpec{str::close_vault, ButtonStyle::outlined, cfg_.icons.close_vault})),
       path_(base_.add<LabelC>(kit_, LabelSpec{"", TypeRole::body_medium, Role::on_surface_variant})),
-      theme_button_(base_.add<IconButtonC>(kit_, cfg_.icons.theme_menu, false)),
+      theme_button_(base_.add<IconButtonC>(kit_, cfg_.icons.theme_menu, false, str::theme)),
       sidebar_(base_.add<ListView>(kit_)),
       clear_(base_.add<ButtonC>(kit_, ButtonSpec{str::clear_filters, ButtonStyle::text})),
       search_(base_.add<TextFieldC>(kit_, str::search_hint)),
-      add_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::add_entry, kit_.theme->entry_action})),
-      edit_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::edit_entry, ButtonStyle::outlined})),
-      delete_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::delete_entry, ButtonStyle::outlined})),
-      login_(base_.add<ButtonC>(kit_, ButtonSpec{str::login_methods, ButtonStyle::outlined})),
-      organize_(base_.add<ButtonC>(kit_, ButtonSpec{str::organize, ButtonStyle::outlined})),
+      add_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::add, kit_.theme->entry_action, cfg_.icons.add})),
+      organize_(base_.add<IconButtonC>(kit_, cfg_.icons.organize, false, str::organize)),
       tree_(base_.add<ListView>(
           kit_, ListOptions{.columns = {{str::col_name, str::col_type, str::col_persona}, {2.0, 1.0, 1.0}},
                             .tree = true,
-                            .select_follows_cursor = true})),
+                            .select_follows_cursor = true,
+                            .row_actions = {{cfg_.icons.login_methods, str::login_methods},
+                                            {cfg_.icons.edit, str::edit_entry},
+                                            {cfg_.icons.remove, str::delete_entry}}})),
       title_(base_.add<LabelC>(kit_, LabelSpec{str::fields, TypeRole::title_large})),
       detail_(base_.add<LabelC>(kit_, LabelSpec{"", TypeRole::body_medium, Role::on_surface_variant})),
-      add_field_(base_.add<ButtonC>(kit_, ButtonSpec{str::add_field, kit_.theme->field_action})),
-      edit_field_(base_.add<ButtonC>(kit_, ButtonSpec{str::edit_field, ButtonStyle::outlined})),
-      copy_(base_.add<ButtonC>(kit_, ButtonSpec{str::copy_value, ButtonStyle::outlined})),
-      show_totp_(base_.add<ButtonC>(kit_, ButtonSpec{str::show_totp, ButtonStyle::outlined})),
-      delete_field_(base_.add<ButtonC>(kit_, ButtonSpec{str::delete_field, ButtonStyle::outlined})),
+      add_field_(base_.add<ButtonC>(kit_, ButtonSpec{str::add, kit_.theme->field_action, cfg_.icons.add})),
       fields_(base_.add<ListView>(
           kit_, ListOptions{.columns = {{str::label, str::type, str::notes}, {3.0, 2.0, 3.0}},
-                            .select_follows_cursor = true})),
+                            .select_follows_cursor = true,
+                            .row_actions = {{cfg_.icons.copy, str::copy_value},
+                                            {cfg_.icons.totp, str::show_totp},
+                                            {cfg_.icons.edit, str::edit_field},
+                                            {cfg_.icons.remove, str::delete_field}}})),
       totp_(base_.add<TotpC>(kit_)),
       totp_copy_(base_.add<ButtonC>(kit_, ButtonSpec{str::copy_value, ButtonStyle::tonal})),
       totp_close_(base_.add<ButtonC>(kit_, ButtonSpec{str::close, ButtonStyle::text})),
@@ -192,6 +201,32 @@ void App::open_theme_menu() {
     owned_.push_back(std::move(menu));
 }
 
+void App::delete_entry(std::int64_t id) {
+    session_.select_entry(id);
+    confirm(str::confirm_delete_entry, [this] { check(session_.delete_selected_entry()); });
+}
+
+void App::delete_field(std::int64_t id) {
+    session_.select_field(id);
+    confirm(str::confirm_delete_field, [this] { check(session_.delete_selected_field()); });
+}
+
+void App::open_add_menu() {
+    const std::array<const char*, 4> labels{str::service, str::persona, str::account, str::child};
+    const std::array<lm::icons::Symbol, 4> symbols{cfg_.icons.service, cfg_.icons.persona,
+                                                    cfg_.icons.account, cfg_.icons.child};
+    lm::widgets::MenuOptions options;
+    for (std::size_t i = 0; i < labels.size(); ++i) {
+        options.items.push_back({labels[i], lm::icons::Icon{kit_.icons, symbols[i]}});
+    }
+    auto menu = std::make_unique<MenuModal>(kit_, std::move(options), [this](std::size_t index) {
+        entry_sheet_.open_new(str::entry_types[index]);
+    });
+    menu->show(add_entry_.bounds(), frame_size_);
+    present(*menu);
+    owned_.push_back(std::move(menu));
+}
+
 void App::choose_vault(gui::UnlockMode mode) {
     const gui::platform::FileDialogOptions options{cfg_.file_filter, cfg_.vault_extension};
     auto file = mode == gui::UnlockMode::Create ? gui::platform::choose_file_to_save(options)
@@ -248,23 +283,50 @@ void App::wire() {
         dirty_ = true;
     };
     tree_.on_activate = [this](const ListRow&) { entry_sheet_.open_selected(); };
-    add_entry_.on_click = [this] { entry_sheet_.open_new(); };
-    edit_entry_.on_click = [this] { entry_sheet_.open_selected(); };
-    delete_entry_.on_click = [this] {
-        confirm(str::confirm_delete_entry, [this] { check(session_.delete_selected_entry()); });
+    add_entry_.on_click = [this] { open_add_menu(); };
+    tree_.on_action = [this](const ListRow& row, std::size_t action) {
+        session_.select_entry(row.id);
+        switch (action) {
+        case entry_login:
+            login_sheet_.open();
+            break;
+        case entry_edit:
+            entry_sheet_.open_selected();
+            break;
+        case entry_delete:
+            delete_entry(row.id);
+            break;
+        default:
+            break;
+        }
     };
-    login_.on_click = [this] { login_sheet_.open(); };
+    tree_.on_remove = [this](const ListRow& row) { delete_entry(row.id); };
     organize_.on_click = [this] { organize_sheet_.open(); };
 
     fields_.on_select = [this](const ListRow& row) { session_.select_field(row.id); };
     fields_.on_activate = [this](const ListRow&) { field_sheet_.open_selected(); };
-    add_field_.on_click = [this] { field_sheet_.open_new(); };
-    edit_field_.on_click = [this] { field_sheet_.open_selected(); };
-    copy_.on_click = [this] { check(session_.copy_selected_field(clipboard_)); };
-    show_totp_.on_click = [this] { check(session_.show_totp()); };
-    delete_field_.on_click = [this] {
-        confirm(str::confirm_delete_field, [this] { check(session_.delete_selected_field()); });
+    fields_.on_action = [this](const ListRow& row, std::size_t action) {
+        session_.select_field(row.id);
+        switch (action) {
+        case field_copy:
+            check(session_.copy_selected_field(clipboard_));
+            break;
+        case field_totp:
+            check(session_.show_totp());
+            break;
+        case field_edit:
+            field_sheet_.open_selected();
+            break;
+        case field_delete:
+            delete_field(row.id);
+            break;
+        default:
+            break;
+        }
     };
+    fields_.on_remove = [this](const ListRow& row) { delete_field(row.id); };
+    add_field_.on_click = [this] { field_sheet_.open_new(); };
+
     totp_copy_.on_click = [this] { check(session_.copy_totp(clipboard_)); };
     totp_close_.on_click = [this] { session_.close_totp(); };
 }
@@ -281,16 +343,14 @@ NodePtr App::build_layout() {
     auto sidebar = lm::layout::column({grow(sidebar_.node()), clear_.node()});
     sidebar->padding(padding).spacing(t.control_gap).cross_align(stretch).fill_cross(true).fill_main(true);
 
-    auto entry_actions = lm::layout::flow({add_entry_.node(), edit_entry_.node(), delete_entry_.node(),
-                                           login_.node(), organize_.node()});
-    entry_actions->spacing(t.control_gap).line_spacing(t.control_gap);
-    auto entries = lm::layout::column({search_.node(), entry_actions, grow(tree_.node())});
+    auto entry_bar = lm::layout::row({grow(search_.node()), add_entry_.node(), organize_.node()});
+    entry_bar->spacing(t.control_gap).cross_align(center);
+    auto entries = lm::layout::column({entry_bar, grow(tree_.node())});
     entries->padding(padding).spacing(t.gap).cross_align(stretch).fill_cross(true).fill_main(true);
 
-    auto field_actions = lm::layout::flow({add_field_.node(), edit_field_.node(), copy_.node(),
-                                           show_totp_.node(), delete_field_.node()});
-    field_actions->spacing(t.control_gap).line_spacing(t.control_gap);
-    std::vector<NodePtr> detail_rows{title_.node(), detail_.node(), field_actions, grow(fields_.node())};
+    auto field_bar = lm::layout::row({grow(title_.node()), add_field_.node()});
+    field_bar->spacing(t.control_gap).cross_align(center);
+    std::vector<NodePtr> detail_rows{field_bar, detail_.node(), grow(fields_.node())};
     totp_in_layout_ = totp_.visible();
     if (totp_in_layout_) {
         auto totp = lm::layout::row({totp_.node(), lm::layout::flexible_space(), totp_copy_.node(),
@@ -388,6 +448,9 @@ void App::sync_tree() {
         if (e->is_favorite) {
             row.icon = cfg_.icons.favorite;
         }
+        if (e->entry_type != "account") {
+            row.actions = without(entry_login);
+        }
         const bool open = row.expanded;
         rows.push_back(std::move(row));
         if (has_kids && open) {
@@ -416,6 +479,9 @@ void App::sync_fields() {
         row.id = f.id;
         row.text = f.label;
         row.cells = {f.field_type, f.notes};
+        if (f.field_type != "totp") {
+            row.actions = without(field_totp);
+        }
         row.selected = selected && selected->id == f.id;
         rows.push_back(std::move(row));
     }
@@ -431,7 +497,6 @@ void App::sync() {
     dirty_ = false;
     const bool vault = session_.has_vault();
     const bool entry = session_.selected_entry() != nullptr;
-    const bool field = session_.selected_field() != nullptr;
 
     close_.set_enabled(vault);
     path_.set_text(session_.vault_path());
@@ -442,15 +507,8 @@ void App::sync() {
         search_.set_text(session_.filter().query);
     }
     add_entry_.set_enabled(vault);
-    edit_entry_.set_enabled(entry);
-    delete_entry_.set_enabled(entry);
-    login_.set_enabled(entry);
     organize_.set_enabled(vault);
     add_field_.set_enabled(entry);
-    edit_field_.set_enabled(field);
-    copy_.set_enabled(field);
-    show_totp_.set_enabled(field);
-    delete_field_.set_enabled(field);
 
     const bool totp = session_.totp_shown();
     totp_.set_visible(totp);

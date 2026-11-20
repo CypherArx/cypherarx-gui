@@ -58,6 +58,9 @@ private:
     void choose_vault(gui::UnlockMode mode);
     void apply_theme(std::size_t index);
     void open_theme_menu();
+    void open_add_menu();
+    void delete_entry(std::int64_t id);
+    void delete_field(std::int64_t id);
     double bar_height() const;
     bool handle_title_bar(const PointerEvent& e);
 
@@ -85,18 +88,11 @@ private:
     ButtonC& clear_;
     TextFieldC& search_;
     ButtonC& add_entry_;
-    ButtonC& edit_entry_;
-    ButtonC& delete_entry_;
-    ButtonC& login_;
-    ButtonC& organize_;
+    IconButtonC& organize_;
     ListView& tree_;
     LabelC& title_;
     LabelC& detail_;
     ButtonC& add_field_;
-    ButtonC& edit_field_;
-    ButtonC& copy_;
-    ButtonC& show_totp_;
-    ButtonC& delete_field_;
     ListView& fields_;
     TotpC& totp_;
     ButtonC& totp_copy_;

@@ -15,6 +15,9 @@ ListView::ListView(const Kit& kit, ListOptions options)
     for (const std::string& title : options_.columns.titles) {
         titles_.push_back(line_of(kit_, title, kit_.cfg->list.column_title));
     }
+    for (const RowAction& action : options_.row_actions) {
+        tips_.push_back(line_of(kit_, action.tooltip, kit_.cfg->tooltip.type));
+    }
 }
 
 void ListView::set_rows(std::vector<ListRow> rows) {
@@ -44,6 +47,8 @@ void ListView::set_rows(std::vector<ListRow> rows) {
     }
     hovered_.reset();
     pressed_.reset();
+    hovered_action_.reset();
+    tip_.reset();
     scroll_.set_content_height(content_height());
 }
 
@@ -80,6 +85,38 @@ double ListView::header_height() const {
     return titles_.empty() ? 0.0 : kit_.cfg->list.header_height;
 }
 
+std::vector<std::size_t> ListView::actions_of(const ListRow& row) const {
+    std::vector<std::size_t> out;
+    for (std::size_t i = 0; i < options_.row_actions.size(); ++i) {
+        if (row.actions & (1u << i)) {
+            out.push_back(i);
+        }
+    }
+    return out;
+}
+
+bool ListView::actions_visible(std::size_t index) const {
+    if (options_.row_actions.empty()) {
+        return false;
+    }
+    return hovered_ == index || (focused_ && focus_visible_ && cursor_ == index);
+}
+
+double ListView::actions_left(std::size_t count) const {
+    const ListConfig& t = kit_.cfg->list;
+    return rect_.width - t.row_inset_x - static_cast<double>(count) * t.row_height;
+}
+
+std::optional<std::size_t> ListView::action_at(const ListRow& row, double content_x) const {
+    const std::vector<std::size_t> actions = actions_of(row);
+    const double left = actions_left(actions.size());
+    const double cell = kit_.cfg->list.row_height;
+    if (actions.empty() || content_x < left) {
+        return std::nullopt;
+    }
+    const auto slot = static_cast<std::size_t>((content_x - left) / cell);
+    return slot < actions.size() ? std::optional<std::size_t>(actions[slot]) : std::nullopt;
+}
 double ListView::column_x(std::size_t column) const {
     const ListConfig& t = kit_.cfg->list;
     const std::vector<double>& w = options_.columns.weights;
@@ -151,6 +188,12 @@ void ListView::move_cursor(std::size_t index) {
 void ListView::click(std::size_t index, double content_x, int clicks) {
     const ListConfig& t = kit_.cfg->list;
     const ListRow row = rows_[index];
+    if (const auto action = action_at(row, content_x)) {
+        if (on_action) {
+            on_action(row, *action);
+        }
+        return;
+    }
     const double chevron = t.padding + static_cast<double>(row.depth) * t.indent;
     const bool on_chevron = options_.tree && content_x >= chevron - t.icon_gap &&
                             content_x < chevron + t.chevron_size + t.icon_gap;
@@ -190,12 +233,24 @@ void ListView::handle(const PointerEvent& e) {
     if (scroll_.handle(e)) {
         hovered_.reset();
         pressed_.reset();
+        hovered_action_.reset();
+        tip_.reset();
         return;
     }
     const PointerEvent c = scroll_.to_content(e);
     const std::optional<std::size_t> over =
         c.action == PointerAction::leave ? std::nullopt : row_at(c.y_dp);
+    const std::optional<std::size_t> action =
+        over && !options_.row_actions.empty() ? action_at(rows_[*over], c.x_dp) : std::nullopt;
+    if (over != hovered_ || action != hovered_action_) {
+        tip_.reset();
+    }
     hovered_ = over;
+    hovered_action_ = action;
+    tip_.track(action.has_value());
+    if (e.action == PointerAction::down) {
+        tip_.dismiss();
+    }
     switch (e.action) {
     case PointerAction::down:
         if (inside(viewport, e.x_dp, e.y_dp)) {
@@ -270,6 +325,14 @@ bool ListView::handle(const KeyEvent& e) {
         }
         return true;
     }
+    case Key::delete_forward: {
+        if (!cursor_ || !on_remove || e.repeat) {
+            return false;
+        }
+        const ListRow row = rows_[*cursor_];
+        on_remove(row);
+        return true;
+    }
     case Key::enter:
     case Key::space: {
         if (!cursor_ || e.repeat) {
@@ -297,10 +360,13 @@ void ListView::cancel() {
     scroll_.cancel_interaction();
     hovered_.reset();
     pressed_.reset();
+    hovered_action_.reset();
+    tip_.reset();
 }
 
 void ListView::step(double dt) {
     scroll_.step(dt);
+    tip_.step(dt);
     if (const auto e = scroll_.rehover()) {
         hovered_ = e->action == PointerAction::leave ? std::nullopt : row_at(e->y_dp);
     }
@@ -323,9 +389,28 @@ void ListView::set_focused(bool focused) {
 
 std::optional<double> ListView::next_wake_seconds() const {
     const double s = scroll_.next_wake_seconds();
-    return s < 0.0 ? std::nullopt : std::optional<double>(s);
+    std::optional<double> wake = s < 0.0 ? std::nullopt : std::optional<double>(s);
+    if (const auto tip = tip_.wake(kit_.cfg->tooltip.delay_seconds)) {
+        wake = wake ? std::min(*wake, *tip) : *tip;
+    }
+    return wake;
 }
 
+void ListView::paint_overlay(Canvas& canvas, const ColorScheme& scheme) const {
+    if (!hovered_ || !hovered_action_ || !tip_.shown(kit_.cfg->tooltip.delay_seconds)) {
+        return;
+    }
+    const std::vector<std::size_t> actions = actions_of(rows_[*hovered_]);
+    const auto at = std::ranges::find(actions, *hovered_action_);
+    if (at == actions.end()) {
+        return;
+    }
+    const double cell = kit_.cfg->list.row_height;
+    const auto slot = static_cast<double>(at - actions.begin());
+    const Rect anchor = scroll_.to_window({actions_left(actions.size()) + slot * cell,
+                                           static_cast<double>(*hovered_) * cell, cell, cell});
+    paint_tooltip(canvas, kit_, scheme, tips_[*hovered_action_], anchor, window_);
+}
 void ListView::paint_row(Canvas& canvas, const ColorScheme& scheme, std::size_t index) const {
     const ListConfig& t = kit_.cfg->list;
     const ListRow& row = rows_[index];
@@ -371,15 +456,34 @@ void ListView::paint_row(Canvas& canvas, const ColorScheme& scheme, std::size_t 
                         {left - t.icon_gap - t.icon_size, box.y + (box.height - t.icon_size) / 2.0},
                         t.icon_size, side);
     }
+    const std::vector<std::size_t> actions =
+        actions_visible(index) ? actions_of(row) : std::vector<std::size_t>{};
+    const double actions_x = actions_left(actions.size());
+    const double limit = actions.empty() ? box.width : actions_x;
+    auto fitted = [&](double x, double width) { return std::max(0.0, std::min(x + width, limit) - x); };
     const double first_right = column_x(0) + column_width(0);
-    draw_line_in(canvas, kit_, laid.text, {left, box.y, std::max(0.0, first_right - left), box.height},
+    draw_line_in(canvas, kit_, laid.text, {left, box.y, fitted(left, first_right - left), box.height},
                  main);
     for (std::size_t j = 0; j < laid.cells.size(); ++j) {
-        draw_line_in(canvas, kit_, laid.cells[j],
-                     {column_x(j + 1), box.y, column_width(j + 1), box.height}, side);
+        const double x = column_x(j + 1);
+        const double width = fitted(x, column_width(j + 1));
+        if (width > 0.0) {
+            draw_line_in(canvas, kit_, laid.cells[j], {x, box.y, width, box.height}, side);
+        }
+    }
+    for (std::size_t slot = 0; slot < actions.size(); ++slot) {
+        const Point middle{actions_x + (static_cast<double>(slot) + 0.5) * t.row_height,
+                           box.y + box.height / 2.0};
+        if (hovered_ == index && hovered_action_ == actions[slot]) {
+            canvas.fill_path(lm::render::circle_path(middle, t.row_height / 2.0 - t.action_inset),
+                             lm::color::with_alpha(scheme[Role::on_surface],
+                                                   lm::tokens::state_layer_opacity::hover));
+        }
+        kit_.icons.draw(canvas, options_.row_actions[actions[slot]].symbol,
+                        {middle.x - t.action_icon / 2.0, middle.y - t.action_icon / 2.0},
+                        t.action_icon, side);
     }
 }
-
 void ListView::paint(Canvas& canvas, const ColorScheme& scheme) const {
     const ListConfig& t = kit_.cfg->list;
     const double head = header_height();

@@ -112,6 +112,13 @@ inline constexpr const char* totp_remaining_short_fmt = "%u s";
 inline constexpr const char* theme_dark_outlined = "Dark, outlined";
 inline constexpr const char* theme_dark_tonal = "Dark, tonal";
 inline constexpr const char* theme_light = "Light";
+inline constexpr const char* theme = "Theme";
+inline constexpr const char* account = "Account";
+inline constexpr const char* child = "Child";
+inline constexpr const char* add_service = "Add Service";
+inline constexpr const char* add_persona = "Add Persona";
+inline constexpr const char* add_account = "Add Account";
+inline constexpr const char* add_child = "Add Child";
 
 inline constexpr std::array<const char*, 4> entry_types = {"service", "persona", "account", "child"};
 inline constexpr std::array<const char*, 3> field_types = {"text", "password", "totp"};

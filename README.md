@@ -162,6 +162,13 @@ Differences from the ImGui front end:
   Right collapse and expand, and Enter opens the edit sheet. A double click opens the edit sheet
   too; on an entry that has children it collapses or expands it instead. `Ctrl+F` focuses the
   search box.
+- What acts on one entry or one field sits on its row. Hovering a row, or moving to it with the
+  keyboard, shows icon buttons at its right end: login methods (accounts only), edit and delete
+  on an entry; copy, TOTP (`totp` fields only), edit and delete on a field. Delete on the
+  keyboard deletes the row under the cursor. Above the lists only Add and Organize remain, and
+  the vault buttons carry icons. Icon buttons show a tooltip after a short hover.
+- Add opens a menu of what to add (Service, Persona, Account, Child), so the sheet that follows
+  has no type field; the type can still be changed when editing.
 - A field's notes are a column of the field list instead of a tooltip.
 - The TOTP code is updated once a second, next to a countdown ring.
 - Tag chips in the entry sheet take the pointer only.

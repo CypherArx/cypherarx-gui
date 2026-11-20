@@ -21,6 +21,17 @@ lm::widgets::ButtonOptions button_options(const Kit& kit, const ButtonSpec& spec
     return o;
 }
 
+lm::widgets::ButtonOptions disabled_options(const Kit& kit, const ButtonSpec& spec) {
+    lm::widgets::ButtonOptions o = button_options(kit, spec);
+    const bool solid = spec.style == lm::tokens::ButtonStyle::filled ||
+                       spec.style == lm::tokens::ButtonStyle::tonal;
+    if (solid) {
+        o.colors = lm::widgets::ButtonColors{kit.cfg->theme.disabled_container,
+                                             kit.cfg->theme.disabled_content};
+    }
+    return o;
+}
+
 lm::widgets::CircularProgressOptions spinner_options(const Kit& kit) {
     lm::widgets::CircularProgressOptions o;
     o.diameter = kit.cfg->spinner.diameter;
@@ -78,6 +89,23 @@ void paint_field_frame(Canvas& canvas, const Kit& kit, const ColorScheme& scheme
                      lm::color::with_alpha(scheme[frame.container], 1.0));
     lm::text::draw_line(canvas, kit.fonts, label, {x, r.y - h / 2.0},
                         scheme[frame.focused ? Role::primary : Role::on_surface_variant]);
+}
+
+void paint_tooltip(Canvas& canvas, const Kit& kit, const ColorScheme& scheme,
+                   const lm::text::TextLine& text, const Rect& anchor, const Rect& window) {
+    const TooltipConfig& t = kit.cfg->tooltip;
+    const double width = text.width + 2.0 * t.padding;
+    const double left = window.x + t.window_margin;
+    const double right = std::max(left, window.x + window.width - t.window_margin - width);
+    const double x = std::clamp(anchor.x + (anchor.width - width) / 2.0, left, right);
+    double y = anchor.y + anchor.height + t.gap;
+    if (y + t.height > window.y + window.height - t.window_margin) {
+        y = anchor.y - t.gap - t.height;
+    }
+    canvas.fill_rounded_rect({x, y, width, t.height}, lm::render::uniform_radii(t.radius),
+                             scheme[Role::inverse_surface]);
+    draw_line_in(canvas, kit, text, {x + t.padding, y, text.width, t.height},
+                 scheme[Role::inverse_on_surface]);
 }
 
 void Control::set_visible(bool visible) {
@@ -247,7 +275,10 @@ std::optional<double> Panel::next_wake_seconds() const {
 }
 
 ButtonC::ButtonC(const Kit& kit, ButtonSpec spec)
-    : kit_(kit), spec_(std::move(spec)), w_(button_options(kit, spec_), kit.fonts) {}
+    : kit_(kit),
+      spec_(std::move(spec)),
+      w_(button_options(kit, spec_), kit.fonts),
+      disabled_(disabled_options(kit, spec_), kit.fonts) {}
 
 void ButtonC::set_style(lm::tokens::ButtonStyle style) {
     if (spec_.style == style) {
@@ -255,9 +286,10 @@ void ButtonC::set_style(lm::tokens::ButtonStyle style) {
     }
     spec_.style = style;
     w_ = lm::widgets::Button(button_options(kit_, spec_), kit_.fonts);
+    disabled_ = lm::widgets::Button(disabled_options(kit_, spec_), kit_.fonts);
     w_.set_origin(origin_);
+    disabled_.set_origin(origin_);
 }
-
 Size ButtonC::measure(const Constraints&) {
     return {w_.width(), w_.height()};
 }
@@ -265,10 +297,11 @@ Size ButtonC::measure(const Constraints&) {
 void ButtonC::arrange(const Rect& r) {
     origin_ = {r.x, r.y + (r.height - w_.height()) / 2.0};
     w_.set_origin(origin_);
+    disabled_.set_origin(origin_);
 }
 
 void ButtonC::paint(Canvas& canvas, const ColorScheme& scheme) const {
-    w_.paint(canvas, scheme);
+    (enabled() ? w_ : disabled_).paint(canvas, scheme);
 }
 
 void ButtonC::handle(const PointerEvent& e) {
@@ -287,8 +320,12 @@ bool ButtonC::handle(const KeyEvent& e) {
     return true;
 }
 
-IconButtonC::IconButtonC(const Kit& kit, lm::icons::Symbol symbol, bool toggleable)
-    : w_(lm::widgets::IconButtonOptions{.icon = {kit.icons, symbol}, .toggleable = toggleable}) {}
+IconButtonC::IconButtonC(const Kit& kit, lm::icons::Symbol symbol, bool toggleable,
+                         std::string tooltip)
+    : kit_(kit),
+      w_(lm::widgets::IconButtonOptions{.icon = {kit.icons, symbol}, .toggleable = toggleable}),
+      tip_(line_of(kit, tooltip, kit.cfg->tooltip.type)),
+      has_tip_(!tooltip.empty()) {}
 
 Size IconButtonC::measure(const Constraints&) {
     return {w_.width(), w_.height()};
@@ -302,6 +339,12 @@ void IconButtonC::paint(Canvas& canvas, const ColorScheme& scheme) const {
     w_.paint(canvas, scheme);
 }
 
+void IconButtonC::paint_overlay(Canvas& canvas, const ColorScheme& scheme) const {
+    if (has_tip_ && tip_state_.shown(kit_.cfg->tooltip.delay_seconds)) {
+        paint_tooltip(canvas, kit_, scheme, tip_, w_.bounds(), window_);
+    }
+}
+
 void IconButtonC::activated() {
     if (on_click) {
         on_click();
@@ -312,6 +355,11 @@ void IconButtonC::activated() {
 }
 
 void IconButtonC::handle(const PointerEvent& e) {
+    hover_.update(e, w_.bounds());
+    tip_state_.track(hover_.hovered);
+    if (hover_.pressed) {
+        tip_state_.dismiss();
+    }
     if (w_.handle(e)) {
         activated();
     }
@@ -325,6 +373,20 @@ bool IconButtonC::handle(const KeyEvent& e) {
     return true;
 }
 
+void IconButtonC::cancel() {
+    w_.cancel_interaction();
+    hover_ = {};
+    tip_state_.reset();
+}
+
+void IconButtonC::step(double dt) {
+    w_.step(dt);
+    tip_state_.step(dt);
+}
+
+std::optional<double> IconButtonC::next_wake_seconds() const {
+    return has_tip_ ? tip_state_.wake(kit_.cfg->tooltip.delay_seconds) : std::nullopt;
+}
 CheckC::CheckC(const Kit& kit, std::string label)
     : kit_(kit), label_(line_of(kit, label, TypeRole::body_large)) {}
 

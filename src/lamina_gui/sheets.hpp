@@ -75,7 +75,7 @@ class EntrySheet final : public Sheet {
 public:
     EntrySheet(const Kit& kit, Host& host);
 
-    void open_new();
+    void open_new(const std::string& type);
     void open_selected();
 
 protected:

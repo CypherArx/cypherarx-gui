@@ -114,6 +114,41 @@ void paint_field_frame(Canvas& canvas, const Kit& kit, const ColorScheme& scheme
                        const FieldFrame& frame, const lm::text::TextLine& label,
                        const lm::text::TextLine* resting = nullptr);
 
+class HoverTip {
+public:
+    void track(bool hovering) {
+        if (!hovering) {
+            reset();
+        }
+        hovering_ = hovering;
+    }
+    void dismiss() { dismissed_ = true; }
+    void reset() {
+        hovering_ = false;
+        dismissed_ = false;
+        seconds_ = 0.0;
+    }
+    void step(double dt) {
+        if (waiting()) {
+            seconds_ += dt;
+        }
+    }
+    bool shown(double delay) const { return waiting() && seconds_ >= delay; }
+    std::optional<double> wake(double delay) const {
+        return waiting() && seconds_ < delay ? std::optional<double>(delay - seconds_) : std::nullopt;
+    }
+
+private:
+    bool waiting() const { return hovering_ && !dismissed_; }
+
+    bool hovering_ = false;
+    bool dismissed_ = false;
+    double seconds_ = 0.0;
+};
+
+void paint_tooltip(Canvas& canvas, const Kit& kit, const ColorScheme& scheme,
+                   const lm::text::TextLine& text, const Rect& anchor, const Rect& window);
+
 struct ButtonSpec {
     std::string label;
     lm::tokens::ButtonStyle style = lm::tokens::ButtonStyle::tonal;
@@ -126,6 +161,8 @@ public:
     ButtonC(const Kit& kit, ButtonSpec spec);
 
     std::function<void()> on_click;
+    Rect bounds() const { return w_.bounds(); }
+    void set_style(lm::tokens::ButtonStyle style);
 
     Size measure(const Constraints& c) override;
     void arrange(const Rect& r) override;
@@ -138,18 +175,18 @@ public:
     bool focusable() const override { return true; }
     bool focused() const override { return w_.focused(); }
     void set_focused(bool focused) override { w_.set_focused(focused); }
-    void set_style(lm::tokens::ButtonStyle style);
 
 private:
     const Kit& kit_;
     ButtonSpec spec_;
     Point origin_{0.0, 0.0};
     lm::widgets::Button w_;
+    lm::widgets::Button disabled_;
 };
 
 class IconButtonC final : public Control {
 public:
-    IconButtonC(const Kit& kit, lm::icons::Symbol symbol, bool toggleable);
+    IconButtonC(const Kit& kit, lm::icons::Symbol symbol, bool toggleable, std::string tooltip = {});
 
     std::function<void()> on_click;
     std::function<void(bool)> on_change;
@@ -159,22 +196,30 @@ public:
 
     Size measure(const Constraints& c) override;
     void arrange(const Rect& r) override;
+    void set_window(const Rect& window) override { window_ = window; }
     void paint(Canvas& canvas, const ColorScheme& scheme) const override;
+    void paint_overlay(Canvas& canvas, const ColorScheme& scheme) const override;
     void handle(const PointerEvent& e) override;
     bool handle(const KeyEvent& e) override;
-    void cancel() override { w_.cancel_interaction(); }
-    void step(double dt) override { w_.step(dt); }
+    void cancel() override;
+    void step(double dt) override;
     bool animating() const override { return w_.animating(); }
     bool focusable() const override { return true; }
     bool focused() const override { return w_.focused(); }
     void set_focused(bool focused) override { w_.set_focused(focused); }
+    std::optional<double> next_wake_seconds() const override;
 
 private:
     void activated();
 
+    const Kit& kit_;
     lm::widgets::IconButton w_;
+    lm::text::TextLine tip_;
+    bool has_tip_;
+    lm::widgets::PressState hover_;
+    HoverTip tip_state_;
+    Rect window_{0.0, 0.0, 0.0, 0.0};
 };
-
 class CheckC final : public Control {
 public:
     CheckC(const Kit& kit, std::string label);
