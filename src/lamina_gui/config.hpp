@@ -2,13 +2,17 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 #include "cypherarx/kdf.hpp"
 
+#include "lamina/color/argb.hpp"
 #include "lamina/color/scheme.hpp"
 #include "lamina/icons/symbols.hpp"
 #include "lamina/tokens/button.hpp"
 #include "lamina/tokens/typography.hpp"
+
+#include "strings.hpp"
 
 namespace cypherarx::lamina_gui {
 
@@ -21,15 +25,67 @@ struct WindowConfig {
     bool client_title_bar = true;
 };
 
+enum class PaneStyle { filled, outlined };
+
+struct ThemePreset {
+    const char* name;
+    lamina::icons::Symbol icon;
+    bool dark;
+    lamina::color::Variant variant;
+    lamina::color::Role background;
+    lamina::color::Role pane;
+    PaneStyle pane_style;
+    lamina::color::Role sheet;
+    lamina::color::Role popup;
+    lamina::tokens::ButtonStyle vault_action;
+    lamina::tokens::ButtonStyle entry_action;
+    lamina::tokens::ButtonStyle field_action;
+};
+
 struct ThemeConfig {
-    lamina::color::SchemeOptions scheme{.seed = 0xff3d6fb4,
-                                        .dark = true,
-                                        .variant = lamina::color::Variant::tonal_spot,
-                                        .contrast = 0.0};
-    lamina::color::Role background = lamina::color::Role::surface;
-    lamina::color::Role pane = lamina::color::Role::surface_container_low;
-    lamina::color::Role sheet = lamina::color::Role::surface_container_high;
-    lamina::color::Role popup = lamina::color::Role::surface_container;
+    lamina::color::Argb seed = 0xff3d6fb4;
+    double contrast = 0.0;
+    std::vector<ThemePreset> presets{
+        {.name = cypherarx::gui::text::theme_dark_outlined,
+         .icon = lamina::icons::Symbol::dark_mode,
+         .dark = true,
+         .variant = lamina::color::Variant::tonal_spot,
+         .background = lamina::color::Role::surface_container_lowest,
+         .pane = lamina::color::Role::surface_container_lowest,
+         .pane_style = PaneStyle::outlined,
+         .sheet = lamina::color::Role::surface_container_high,
+         .popup = lamina::color::Role::surface_container,
+         .vault_action = lamina::tokens::ButtonStyle::outlined,
+         .entry_action = lamina::tokens::ButtonStyle::filled,
+         .field_action = lamina::tokens::ButtonStyle::outlined},
+        {.name = cypherarx::gui::text::theme_dark_tonal,
+         .icon = lamina::icons::Symbol::dark_mode,
+         .dark = true,
+         .variant = lamina::color::Variant::neutral,
+         .background = lamina::color::Role::surface,
+         .pane = lamina::color::Role::surface_container_high,
+         .pane_style = PaneStyle::filled,
+         .sheet = lamina::color::Role::surface_container_highest,
+         .popup = lamina::color::Role::surface_container,
+         .vault_action = lamina::tokens::ButtonStyle::tonal,
+         .entry_action = lamina::tokens::ButtonStyle::filled,
+         .field_action = lamina::tokens::ButtonStyle::filled},
+        {.name = cypherarx::gui::text::theme_light,
+         .icon = lamina::icons::Symbol::light_mode,
+         .dark = false,
+         .variant = lamina::color::Variant::tonal_spot,
+         .background = lamina::color::Role::surface,
+         .pane = lamina::color::Role::surface_container_low,
+         .pane_style = PaneStyle::filled,
+         .sheet = lamina::color::Role::surface_container_high,
+         .popup = lamina::color::Role::surface_container,
+         .vault_action = lamina::tokens::ButtonStyle::tonal,
+         .entry_action = lamina::tokens::ButtonStyle::tonal,
+         .field_action = lamina::tokens::ButtonStyle::tonal},
+    };
+    std::size_t initial = 0;
+    lamina::color::Role pane_outline = lamina::color::Role::outline_variant;
+    double pane_outline_width = 1.0;
     lamina::color::Role scrim = lamina::color::Role::scrim;
     double scrim_opacity = 0.32;
     double disabled_opacity = 0.38;
@@ -143,7 +199,7 @@ struct IconConfig {
     lamina::icons::Symbol remove = lamina::icons::Symbol::delete_;
     lamina::icons::Symbol copy = lamina::icons::Symbol::content_copy;
     lamina::icons::Symbol search = lamina::icons::Symbol::search;
-    lamina::icons::Symbol dark_theme = lamina::icons::Symbol::dark_mode;
+    lamina::icons::Symbol theme_menu = lamina::icons::Symbol::palette;
 };
 
 struct ClipboardConfig {

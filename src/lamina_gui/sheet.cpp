@@ -104,7 +104,7 @@ void Sheet::paint(Canvas& canvas, const ColorScheme& scheme) const {
     canvas.save();
     popup_.scale_about(canvas, {surface_.x + surface_.width / 2.0, surface_.y + surface_.height / 2.0});
     canvas.fill_rounded_rect(surface_, lm::render::uniform_radii(kit_.cfg->sheet.radius),
-                             s[theme.sheet]);
+                             s[kit_.theme->sheet]);
     panel_.paint(canvas, s);
     panel_.paint_overlays(canvas, s);
     canvas.restore();
@@ -153,6 +153,32 @@ void DialogModal::handle(const KeyEvent& e) {
 
 void DialogModal::paint(Canvas& canvas, const ColorScheme& scheme) const {
     dialog_.paint(canvas, scheme);
+}
+
+MenuModal::MenuModal(const Kit& kit, lm::widgets::MenuOptions options,
+                     std::function<void(std::size_t)> on_choose)
+    : menu_(std::move(options), kit.fonts), on_choose_(std::move(on_choose)) {}
+
+void MenuModal::show(const Rect& anchor, Size window) {
+    menu_.open(anchor, window);
+}
+
+void MenuModal::finish(const lm::widgets::MenuResponse& response) {
+    if (response.chosen && on_choose_) {
+        on_choose_(*response.chosen);
+    }
+}
+
+void MenuModal::handle(const PointerEvent& e) {
+    finish(menu_.handle(e));
+}
+
+void MenuModal::handle(const KeyEvent& e) {
+    finish(menu_.handle(e));
+}
+
+void MenuModal::paint(Canvas& canvas, const ColorScheme& scheme) const {
+    menu_.paint(canvas, scheme);
 }
 
 } // namespace cypherarx::lamina_gui

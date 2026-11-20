@@ -16,7 +16,7 @@ namespace cypherarx::lamina_gui {
 
 class SecretField final : public Control {
 public:
-    SecretField(const Kit& kit, std::string label, std::size_t capacity, Role container);
+    SecretField(const Kit& kit, std::string label, std::size_t capacity, SurfaceRole container);
 
     std::function<void()> on_submit;
 
@@ -59,7 +59,7 @@ private:
     void place_caret(double x);
 
     const Kit& kit_;
-    Role container_;
+    SurfaceRole container_;
     gui::SecretBuffer buffer_;
     lm::text::TextLine label_;
     lm::text::TextLine resting_label_;

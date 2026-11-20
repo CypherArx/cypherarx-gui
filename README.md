@@ -135,7 +135,8 @@ itself for the caret blink, the TOTP countdown and the clipboard deadline.
 
 The logic lives in `src/model/` and knows nothing about the toolkit; `src/lamina_gui/` only
 turns it into controls. Buttons, icon buttons, checkboxes, text fields, labels, the progress
-ring, the scroll area, focus order and the confirm / message dialogs are lamina-ui widgets.
+ring, the scroll area, focus order, the theme menu and the confirm / message dialogs are
+lamina-ui widgets.
 lamina-ui 0.1.0 has no list, tree, drop-down, masked input or dialog with custom content, so
 those are written here on top of lamina-ui's canvas, text layout and tokens:
 
@@ -159,8 +160,12 @@ Differences from the ImGui front end:
 - The TOTP code is updated once a second, next to a countdown ring.
 - Tag chips in the entry sheet take the pointer only.
 - The clipboard is also cleared when the window closes.
-- The button at the end of the toolbar switches between the dark and the light scheme, both
-  built from the same seed colour. The window starts dark; the choice is not saved.
+- The palette button at the end of the toolbar opens a menu of themes: *Dark, outlined* (black
+  ground, panes drawn as outlines, one filled button), *Dark, tonal* (neutral greys, panes as
+  raised surfaces) and *Light*. A theme is one `ThemePreset` in `src/lamina_gui/config.hpp`:
+  the scheme variant, the colour roles of the ground, the panes, the sheets and the popups,
+  whether panes are filled or outlined, and the kinds of the main buttons. Every theme is built
+  from the same seed colour. The window starts with the first one; the choice is not saved.
 
 The ImGui front end still carries its own copy of the logic in `src/app/app.cpp`; it has not
 been moved onto `src/model/`.

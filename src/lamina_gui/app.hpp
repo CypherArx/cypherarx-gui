@@ -56,7 +56,8 @@ private:
     void sweep();
     Modal* top_modal() const;
     void choose_vault(gui::UnlockMode mode);
-    void set_dark(bool dark);
+    void apply_theme(std::size_t index);
+    void open_theme_menu();
     double bar_height() const;
     bool handle_title_bar(const PointerEvent& e);
 
@@ -79,7 +80,7 @@ private:
     ButtonC& open_;
     ButtonC& close_;
     LabelC& path_;
-    ToggleIconC& dark_;
+    IconButtonC& theme_button_;
     ListView& sidebar_;
     ButtonC& clear_;
     TextFieldC& search_;
@@ -110,10 +111,12 @@ private:
     LoginSheet login_sheet_;
 
     std::vector<Modal*> modals_;
-    std::vector<std::unique_ptr<DialogModal>> dialogs_;
+    std::vector<std::unique_ptr<Modal>> owned_;
     std::unordered_set<std::int64_t> collapsed_;
     NodePtr root_;
     Rect window_rect_{0.0, 0.0, 0.0, 0.0};
+    Size frame_size_{0.0, 0.0};
+    std::size_t theme_index_ = 0;
     std::uint64_t seen_revision_ = 0;
     bool dirty_ = true;
     bool totp_in_layout_ = false;

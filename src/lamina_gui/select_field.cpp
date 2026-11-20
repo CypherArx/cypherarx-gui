@@ -8,7 +8,7 @@
 
 namespace cypherarx::lamina_gui {
 
-SelectField::SelectField(const Kit& kit, std::string label, Role container)
+SelectField::SelectField(const Kit& kit, std::string label, SurfaceRole container)
     : kit_(kit),
       container_(container),
       label_(line_of(kit, label, kit.cfg->field.label)),
@@ -172,7 +172,7 @@ std::optional<double> SelectField::next_wake_seconds() const {
 void SelectField::paint(Canvas& canvas, const ColorScheme& scheme) const {
     const FieldConfig& t = kit_.cfg->field;
     paint_field_frame(canvas, kit_, scheme,
-                      {box_, container_, focused_ || popup_.is_open(), press_.hovered}, label_);
+                      {box_, kit_.theme->*container_, focused_ || popup_.is_open(), press_.hovered}, label_);
     const double icon_x = box_.x + box_.width - t.padding - t.trailing_icon;
     draw_line_in(canvas, kit_, value_,
                  {box_.x + t.padding, box_.y, std::max(0.0, icon_x - t.label_gap - box_.x - t.padding),
@@ -192,7 +192,7 @@ void SelectField::paint_overlay(Canvas& canvas, const ColorScheme& scheme) const
     canvas.save();
     popup_.scale_about(canvas, {popup_rect_.x + popup_rect_.width / 2.0,
                                 opens_upward_ ? popup_rect_.y + popup_rect_.height : popup_rect_.y});
-    lm::widgets::paint_surface(canvas, popup_rect_, t.popup_radius, s[kit_.cfg->theme.popup],
+    lm::widgets::paint_surface(canvas, popup_rect_, t.popup_radius, s[kit_.theme->popup],
                                lm::tokens::elevation_dp[t.popup_elevation], s[Role::shadow]);
     list_.paint(canvas, s);
     canvas.restore();

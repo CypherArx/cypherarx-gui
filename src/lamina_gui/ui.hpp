@@ -39,11 +39,14 @@ using lm::render::Point;
 using lm::render::Rect;
 using lm::tokens::TypeRole;
 
+using SurfaceRole = Role ThemePreset::*;
+
 struct Kit {
     lm::text::FontStack fonts;
     lm::icons::IconFont icons;
     lm::input::Clipboard* clipboard;
     const Config* cfg;
+    const ThemePreset* theme;
 };
 
 inline lm::text::TextStyle style_of(TypeRole role, bool emphasized = false) {

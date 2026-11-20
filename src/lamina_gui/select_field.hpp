@@ -14,7 +14,7 @@ namespace cypherarx::lamina_gui {
 
 class SelectField final : public Control {
 public:
-    SelectField(const Kit& kit, std::string label, Role container);
+    SelectField(const Kit& kit, std::string label, SurfaceRole container);
 
     std::function<void(std::size_t)> on_change;
 
@@ -47,7 +47,7 @@ private:
     void sync_rows();
 
     const Kit& kit_;
-    Role container_;
+    SurfaceRole container_;
     lm::text::TextLine label_;
     lm::text::TextLine value_;
     std::vector<std::string> items_;

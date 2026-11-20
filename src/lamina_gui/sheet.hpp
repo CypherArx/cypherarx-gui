@@ -5,6 +5,7 @@
 #include <string>
 
 #include "lamina/widgets/dialog.hpp"
+#include "lamina/widgets/menu.hpp"
 #include "lamina/widgets/popup_transition.hpp"
 
 #include "lamina_gui/controls.hpp"
@@ -95,6 +96,32 @@ private:
 
     lm::widgets::Dialog dialog_;
     std::function<void(bool)> on_result_;
+};
+
+class MenuModal final : public Modal {
+public:
+    MenuModal(const Kit& kit, lm::widgets::MenuOptions options,
+              std::function<void(std::size_t)> on_choose);
+
+    void show(const Rect& anchor, Size window);
+
+    bool is_open() const override { return menu_.is_open(); }
+    bool visible() const override { return menu_.visible(); }
+    void set_area(const Rect&) override {}
+    void handle(const PointerEvent& e) override;
+    void handle(const WheelEvent&) override {}
+    void handle(const KeyEvent& e) override;
+    void handle(const TextEvent&) override {}
+    void cancel() override { menu_.cancel_interaction(); }
+    void step(double dt) override { menu_.step(dt); }
+    bool animating() const override { return menu_.animating(); }
+    void paint(Canvas& canvas, const ColorScheme& scheme) const override;
+
+private:
+    void finish(const lm::widgets::MenuResponse& response);
+
+    lm::widgets::Menu menu_;
+    std::function<void(std::size_t)> on_choose_;
 };
 
 } // namespace cypherarx::lamina_gui

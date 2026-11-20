@@ -246,14 +246,25 @@ std::optional<double> Panel::next_wake_seconds() const {
     return wake;
 }
 
-ButtonC::ButtonC(const Kit& kit, ButtonSpec spec) : w_(button_options(kit, spec), kit.fonts) {}
+ButtonC::ButtonC(const Kit& kit, ButtonSpec spec)
+    : kit_(kit), spec_(std::move(spec)), w_(button_options(kit, spec_), kit.fonts) {}
+
+void ButtonC::set_style(lm::tokens::ButtonStyle style) {
+    if (spec_.style == style) {
+        return;
+    }
+    spec_.style = style;
+    w_ = lm::widgets::Button(button_options(kit_, spec_), kit_.fonts);
+    w_.set_origin(origin_);
+}
 
 Size ButtonC::measure(const Constraints&) {
     return {w_.width(), w_.height()};
 }
 
 void ButtonC::arrange(const Rect& r) {
-    w_.set_origin({r.x, r.y + (r.height - w_.height()) / 2.0});
+    origin_ = {r.x, r.y + (r.height - w_.height()) / 2.0};
+    w_.set_origin(origin_);
 }
 
 void ButtonC::paint(Canvas& canvas, const ColorScheme& scheme) const {
@@ -276,34 +287,41 @@ bool ButtonC::handle(const KeyEvent& e) {
     return true;
 }
 
-ToggleIconC::ToggleIconC(const Kit& kit, lm::icons::Symbol symbol)
-    : w_(lm::widgets::IconButtonOptions{.icon = {kit.icons, symbol}, .toggleable = true}) {}
+IconButtonC::IconButtonC(const Kit& kit, lm::icons::Symbol symbol, bool toggleable)
+    : w_(lm::widgets::IconButtonOptions{.icon = {kit.icons, symbol}, .toggleable = toggleable}) {}
 
-Size ToggleIconC::measure(const Constraints&) {
+Size IconButtonC::measure(const Constraints&) {
     return {w_.width(), w_.height()};
 }
 
-void ToggleIconC::arrange(const Rect& r) {
+void IconButtonC::arrange(const Rect& r) {
     w_.set_origin({r.x, r.y + (r.height - w_.height()) / 2.0});
 }
 
-void ToggleIconC::paint(Canvas& canvas, const ColorScheme& scheme) const {
+void IconButtonC::paint(Canvas& canvas, const ColorScheme& scheme) const {
     w_.paint(canvas, scheme);
 }
 
-void ToggleIconC::handle(const PointerEvent& e) {
-    if (w_.handle(e) && on_change) {
-        on_change(w_.checked());
-    }
-}
-
-bool ToggleIconC::handle(const KeyEvent& e) {
-    if (!w_.handle(e)) {
-        return false;
+void IconButtonC::activated() {
+    if (on_click) {
+        on_click();
     }
     if (on_change) {
         on_change(w_.checked());
     }
+}
+
+void IconButtonC::handle(const PointerEvent& e) {
+    if (w_.handle(e)) {
+        activated();
+    }
+}
+
+bool IconButtonC::handle(const KeyEvent& e) {
+    if (!w_.handle(e)) {
+        return false;
+    }
+    activated();
     return true;
 }
 
@@ -464,7 +482,14 @@ Size PaneC::measure(const Constraints& c) {
 }
 
 void PaneC::paint(Canvas& canvas, const ColorScheme& scheme) const {
-    canvas.fill_rounded_rect(rect_, lm::render::uniform_radii(radius_), scheme[fill_]);
+    const ThemeConfig& t = kit_.cfg->theme;
+    const double radius = kit_.cfg->layout.pane_radius;
+    if (kit_.theme->pane_style == PaneStyle::outlined) {
+        canvas.fill_path(lm::render::ring_path(rect_, radius, t.pane_outline_width),
+                         scheme[t.pane_outline], lm::render::FillRule::even_odd);
+        return;
+    }
+    canvas.fill_rounded_rect(rect_, lm::render::uniform_radii(radius), scheme[kit_.theme->pane]);
 }
 
 SpinnerC::SpinnerC(const Kit& kit) : w_(spinner_options(kit)) {

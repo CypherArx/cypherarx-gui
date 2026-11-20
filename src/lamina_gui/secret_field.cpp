@@ -23,7 +23,8 @@ bool control(char c) {
 
 } // namespace
 
-SecretField::SecretField(const Kit& kit, std::string label, std::size_t capacity, Role container)
+SecretField::SecretField(const Kit& kit, std::string label, std::size_t capacity,
+                         SurfaceRole container)
     : kit_(kit),
       container_(container),
       buffer_(capacity),
@@ -301,7 +302,7 @@ std::optional<double> SecretField::next_wake_seconds() const {
 void SecretField::paint(Canvas& canvas, const ColorScheme& scheme) const {
     const FieldConfig& t = kit_.cfg->field;
     const bool floated = focused_ || !empty() || !composition_.empty();
-    paint_field_frame(canvas, kit_, scheme, {box_, container_, focused_, press_.hovered, floated},
+    paint_field_frame(canvas, kit_, scheme, {box_, kit_.theme->*container_, focused_, press_.hovered, floated},
                       label_, &resting_label_);
 
     canvas.push_clip({text_left() - t.caret_width, box_.y, inner_width() + 2.0 * t.caret_width,

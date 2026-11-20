@@ -138,18 +138,24 @@ public:
     bool focusable() const override { return true; }
     bool focused() const override { return w_.focused(); }
     void set_focused(bool focused) override { w_.set_focused(focused); }
+    void set_style(lm::tokens::ButtonStyle style);
 
 private:
+    const Kit& kit_;
+    ButtonSpec spec_;
+    Point origin_{0.0, 0.0};
     lm::widgets::Button w_;
 };
 
-class ToggleIconC final : public Control {
+class IconButtonC final : public Control {
 public:
-    ToggleIconC(const Kit& kit, lm::icons::Symbol symbol);
+    IconButtonC(const Kit& kit, lm::icons::Symbol symbol, bool toggleable);
 
+    std::function<void()> on_click;
     std::function<void(bool)> on_change;
     bool checked() const { return w_.checked(); }
     void set_checked(bool checked) { w_.set_checked(checked); }
+    Rect bounds() const { return w_.bounds(); }
 
     Size measure(const Constraints& c) override;
     void arrange(const Rect& r) override;
@@ -164,6 +170,8 @@ public:
     void set_focused(bool focused) override { w_.set_focused(focused); }
 
 private:
+    void activated();
+
     lm::widgets::IconButton w_;
 };
 
@@ -253,15 +261,14 @@ private:
 
 class PaneC final : public Control {
 public:
-    PaneC(Role fill, double radius) : fill_(fill), radius_(radius) {}
+    explicit PaneC(const Kit& kit) : kit_(kit) {}
 
     Size measure(const Constraints& c) override;
     void arrange(const Rect& r) override { rect_ = r; }
     void paint(Canvas& canvas, const ColorScheme& scheme) const override;
 
 private:
-    Role fill_;
-    double radius_;
+    const Kit& kit_;
     Rect rect_{0.0, 0.0, 0.0, 0.0};
 };
 

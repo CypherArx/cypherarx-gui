@@ -61,6 +61,10 @@ int title_bar_extra(const WindowConfig& window) {
     return drawn ? static_cast<int>(std::ceil(lm::tokens::title_bar_tokens.height)) : 0;
 }
 
+ColorScheme build_scheme(const ThemeConfig& config, const ThemePreset& theme) {
+    return lm::color::spec_2025().build({config.seed, theme.dark, theme.variant, config.contrast});
+}
+
 double seconds_to_next_tick() {
     using namespace std::chrono;
     const auto now = system_clock::now().time_since_epoch();
@@ -75,27 +79,28 @@ App::App()
       window_({cfg_.window.title, cfg_.window.width_dp,
                cfg_.window.height_dp + title_bar_extra(cfg_.window), cfg_.window.client_title_bar},
               std::make_unique<lm::thorvg::Canvas>(unsized_pixels, unsized_pixels)),
-      kit_{lm::sdl3::system_font_stack(), lm::sdl3::bundled_icon_font(), &window_.clipboard(), &cfg_},
-      title_bar_({cfg_.window.title, kit_.icons, nullptr, cfg_.theme.background}, kit_.fonts),
-      scheme_(lm::color::spec_2025().build(cfg_.theme.scheme)),
+      kit_{lm::sdl3::system_font_stack(), lm::sdl3::bundled_icon_font(), &window_.clipboard(), &cfg_,
+           &cfg_.theme.presets[cfg_.theme.initial]},
+      title_bar_({cfg_.window.title, kit_.icons, nullptr, kit_.theme->background}, kit_.fonts),
+      scheme_(build_scheme(cfg_.theme, *kit_.theme)),
       scheme_from_(scheme_),
       scheme_to_(scheme_),
       theme_mix_(1.0, lm::tokens::motion_scheme.slow_effects()),
       clipboard_(window_.clipboard()),
       session_(session_settings(cfg_)),
       base_(kit_),
-      sidebar_pane_(base_.add<PaneC>(cfg_.theme.pane, cfg_.layout.pane_radius)),
-      center_pane_(base_.add<PaneC>(cfg_.theme.pane, cfg_.layout.pane_radius)),
-      detail_pane_(base_.add<PaneC>(cfg_.theme.pane, cfg_.layout.pane_radius)),
-      new_(base_.add<ButtonC>(kit_, ButtonSpec{str::new_vault, ButtonStyle::tonal})),
-      open_(base_.add<ButtonC>(kit_, ButtonSpec{str::open_vault, ButtonStyle::tonal})),
+      sidebar_pane_(base_.add<PaneC>(kit_)),
+      center_pane_(base_.add<PaneC>(kit_)),
+      detail_pane_(base_.add<PaneC>(kit_)),
+      new_(base_.add<ButtonC>(kit_, ButtonSpec{str::new_vault, kit_.theme->vault_action})),
+      open_(base_.add<ButtonC>(kit_, ButtonSpec{str::open_vault, kit_.theme->vault_action})),
       close_(base_.add<ButtonC>(kit_, ButtonSpec{str::close_vault, ButtonStyle::outlined})),
       path_(base_.add<LabelC>(kit_, LabelSpec{"", TypeRole::body_medium, Role::on_surface_variant})),
-      dark_(base_.add<ToggleIconC>(kit_, cfg_.icons.dark_theme)),
+      theme_button_(base_.add<IconButtonC>(kit_, cfg_.icons.theme_menu, false)),
       sidebar_(base_.add<ListView>(kit_)),
       clear_(base_.add<ButtonC>(kit_, ButtonSpec{str::clear_filters, ButtonStyle::text})),
       search_(base_.add<TextFieldC>(kit_, str::search_hint)),
-      add_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::add_entry, ButtonStyle::tonal})),
+      add_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::add_entry, kit_.theme->entry_action})),
       edit_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::edit_entry, ButtonStyle::outlined})),
       delete_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::delete_entry, ButtonStyle::outlined})),
       login_(base_.add<ButtonC>(kit_, ButtonSpec{str::login_methods, ButtonStyle::outlined})),
@@ -106,7 +111,7 @@ App::App()
                             .select_follows_cursor = true})),
       title_(base_.add<LabelC>(kit_, LabelSpec{str::fields, TypeRole::title_large})),
       detail_(base_.add<LabelC>(kit_, LabelSpec{"", TypeRole::body_medium, Role::on_surface_variant})),
-      add_field_(base_.add<ButtonC>(kit_, ButtonSpec{str::add_field, ButtonStyle::tonal})),
+      add_field_(base_.add<ButtonC>(kit_, ButtonSpec{str::add_field, kit_.theme->field_action})),
       edit_field_(base_.add<ButtonC>(kit_, ButtonSpec{str::edit_field, ButtonStyle::outlined})),
       copy_(base_.add<ButtonC>(kit_, ButtonSpec{str::copy_value, ButtonStyle::outlined})),
       show_totp_(base_.add<ButtonC>(kit_, ButtonSpec{str::show_totp, ButtonStyle::outlined})),
@@ -123,7 +128,8 @@ App::App()
       entry_sheet_(kit_, *this),
       field_sheet_(kit_, *this),
       organize_sheet_(kit_, *this),
-      login_sheet_(kit_, *this) {
+      login_sheet_(kit_, *this),
+      theme_index_(cfg_.theme.initial) {
     window_.set_minimum_size(cfg_.window.min_width_dp,
                              cfg_.window.min_height_dp + title_bar_extra(cfg_.window));
     wire();
@@ -154,13 +160,37 @@ bool App::handle_title_bar(const PointerEvent& e) {
     return e.action == PointerAction::down && e.y_dp < bar;
 }
 
-void App::set_dark(bool dark) {
-    lm::color::SchemeOptions options = cfg_.theme.scheme;
-    options.dark = dark;
+void App::apply_theme(std::size_t index) {
+    if (index >= cfg_.theme.presets.size() || index == theme_index_) {
+        return;
+    }
+    theme_index_ = index;
+    kit_.theme = &cfg_.theme.presets[index];
+    const ThemePreset& theme = *kit_.theme;
     scheme_from_ = scheme_;
-    scheme_to_ = lm::color::spec_2025().build(options);
+    scheme_to_ = build_scheme(cfg_.theme, theme);
     theme_mix_.snap_to(0.0);
     theme_mix_.animate_to(1.0);
+    title_bar_ = lm::widgets::TitleBar({cfg_.window.title, kit_.icons, nullptr, theme.background},
+                                       kit_.fonts);
+    new_.set_style(theme.vault_action);
+    open_.set_style(theme.vault_action);
+    add_entry_.set_style(theme.entry_action);
+    add_field_.set_style(theme.field_action);
+}
+
+void App::open_theme_menu() {
+    lm::widgets::MenuOptions options;
+    for (std::size_t i = 0; i < cfg_.theme.presets.size(); ++i) {
+        const ThemePreset& theme = cfg_.theme.presets[i];
+        options.items.push_back(
+            {theme.name, lm::icons::Icon{kit_.icons, i == theme_index_ ? cfg_.icons.checked : theme.icon}});
+    }
+    auto menu = std::make_unique<MenuModal>(kit_, std::move(options),
+                                            [this](std::size_t index) { apply_theme(index); });
+    menu->show(theme_button_.bounds(), frame_size_);
+    present(*menu);
+    owned_.push_back(std::move(menu));
 }
 
 void App::choose_vault(gui::UnlockMode mode) {
@@ -177,8 +207,7 @@ void App::wire() {
     new_.on_click = [this] { choose_vault(gui::UnlockMode::Create); };
     open_.on_click = [this] { choose_vault(gui::UnlockMode::Open); };
     close_.on_click = [this] { session_.close_vault(clipboard_); };
-    dark_.set_checked(cfg_.theme.scheme.dark);
-    dark_.on_change = [this](bool dark) { set_dark(dark); };
+    theme_button_.on_click = [this] { open_theme_menu(); };
     password_sheet_.on_started = [this] {
         busy_sheet_.open(session_.unlock_mode() == gui::UnlockMode::Create ? str::new_vault
                                                                            : str::open_vault,
@@ -247,7 +276,7 @@ NodePtr App::build_layout() {
     const auto center = lm::layout::CrossAlign::center;
     const auto padding = lm::layout::Insets::all(t.pane_padding);
 
-    auto toolbar = lm::layout::row({new_.node(), open_.node(), close_.node(), grow(path_.node()), dark_.node()});
+    auto toolbar = lm::layout::row({new_.node(), open_.node(), close_.node(), grow(path_.node()), theme_button_.node()});
     toolbar->spacing(t.control_gap).cross_align(center);
 
     auto sidebar = lm::layout::column({grow(sidebar_.node()), clear_.node()});
@@ -462,7 +491,7 @@ void App::message(const std::string& text) {
         nullptr);
     dialog->show(window_rect_);
     present(*dialog);
-    dialogs_.push_back(std::move(dialog));
+    owned_.push_back(std::move(dialog));
 }
 
 void App::confirm(const std::string& text, std::function<void()> on_yes) {
@@ -477,12 +506,12 @@ void App::confirm(const std::string& text, std::function<void()> on_yes) {
         });
     dialog->show(window_rect_);
     present(*dialog);
-    dialogs_.push_back(std::move(dialog));
+    owned_.push_back(std::move(dialog));
 }
 
 void App::sweep() {
     std::erase_if(modals_, [](const Modal* m) { return !m->visible(); });
-    std::erase_if(dialogs_, [](const auto& d) { return !d->visible(); });
+    std::erase_if(owned_, [](const auto& m) { return !m->visible(); });
 }
 
 void App::handle_key(const KeyEvent& e) {
@@ -495,6 +524,7 @@ void App::handle_key(const KeyEvent& e) {
 
 Argb App::update(const lm::sdl3::Frame& frame) {
     const double bar = bar_height();
+    frame_size_ = {frame.width_dp, frame.height_dp};
     window_rect_ = {0.0, bar, frame.width_dp, std::max(0.0, frame.height_dp - bar)};
     if (bar > 0.0) {
         title_bar_.set_maximized(frame.maximized);
@@ -586,7 +616,7 @@ Argb App::update(const lm::sdl3::Frame& frame) {
     if (wake) {
         window_.wake_after(*wake);
     }
-    return scheme_[cfg_.theme.background];
+    return scheme_[kit_.theme->background];
 }
 
 bool App::paint(Canvas& canvas) {

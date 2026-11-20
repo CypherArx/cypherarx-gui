@@ -129,7 +129,7 @@ private:
     TextFieldC& label_;
     SelectField& type_;
     SecretField& value_;
-    ToggleIconC& show_;
+    IconButtonC& show_;
     ButtonC& generate_;
     TextFieldC& notes_;
     ButtonC& cancel_;

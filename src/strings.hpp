@@ -109,6 +109,9 @@ inline constexpr const char* name = "Name";
 inline constexpr const char* no_fields = "This entry has no fields.";
 inline constexpr const char* no_entries = "No entries yet.";
 inline constexpr const char* totp_remaining_short_fmt = "%u s";
+inline constexpr const char* theme_dark_outlined = "Dark, outlined";
+inline constexpr const char* theme_dark_tonal = "Dark, tonal";
+inline constexpr const char* theme_light = "Light";
 
 inline constexpr std::array<const char*, 4> entry_types = {"service", "persona", "account", "child"};
 inline constexpr std::array<const char*, 3> field_types = {"text", "password", "totp"};
