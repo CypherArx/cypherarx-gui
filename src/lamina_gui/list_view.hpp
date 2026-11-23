@@ -4,6 +4,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "lamina/widgets/scroll_area.hpp"
@@ -41,6 +42,7 @@ struct ListOptions {
     ListColumns columns;
     bool tree = false;
     bool select_follows_cursor = false;
+    bool multi = false;
     std::optional<double> height = std::nullopt;
     std::vector<RowAction> row_actions = {};
 };
@@ -50,6 +52,7 @@ public:
     ListView(const Kit& kit, ListOptions options = {});
 
     std::function<void(const ListRow&)> on_select;
+    std::function<void(const std::vector<ListRow>&, bool)> on_mark;
     std::function<void(const ListRow&)> on_toggle;
     std::function<void(const ListRow&)> on_activate;
     std::function<void(const ListRow&, std::size_t)> on_action;
@@ -112,6 +115,9 @@ private:
     std::optional<std::size_t> pressed_;
     std::optional<std::size_t> cursor_;
     int press_clicks_ = 0;
+    bool press_ctrl_ = false;
+    bool press_shift_ = false;
+    std::optional<std::pair<int, std::int64_t>> anchor_;
     std::vector<lm::text::TextLine> tips_;
     std::optional<std::size_t> hovered_action_;
     HoverTip tip_;

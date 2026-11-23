@@ -55,6 +55,7 @@ lamina_add_resources(cypherarx_gui_resources
     merge
     palette
     person
+    person_add
     public
     sell
     settings

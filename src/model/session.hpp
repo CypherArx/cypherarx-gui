@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -150,6 +151,11 @@ public:
 
     const Entry* selected_entry() const;
     void select_entry(std::optional<std::int64_t> id);
+    const std::unordered_set<std::int64_t>& marked() const { return marked_; }
+    void mark_entries(std::span<const std::int64_t> ids, bool toggle);
+    void clear_marks();
+    std::vector<std::int64_t> marked_accounts() const;
+    Status set_persona_of_marked(std::optional<std::int64_t> persona);
     const std::vector<Field>& fields() const { return fields_; }
     const Field* selected_field() const;
     void select_field(std::optional<std::int64_t> id);
@@ -219,6 +225,7 @@ private:
     Axis axis_ = Axis::Service;
     Filter filter_;
     std::optional<std::int64_t> selected_entry_;
+    std::unordered_set<std::int64_t> marked_;
     std::vector<Field> fields_;
     std::optional<std::int64_t> selected_field_;
     std::string status_;

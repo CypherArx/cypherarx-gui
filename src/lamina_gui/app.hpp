@@ -67,6 +67,7 @@ private:
     void apply_theme(std::size_t index);
     void open_theme_menu();
     void open_vault_menu();
+    void open_persona_menu();
     void open_vault_settings();
     void import_csv();
     void run_import(const std::filesystem::path& file, std::optional<std::int64_t> persona);
@@ -110,6 +111,7 @@ private:
     TextFieldC& search_;
     ButtonC& add_entry_;
     IconButtonC& organize_;
+    IconButtonC& set_persona_;
     ListView& tree_;
     LabelC& title_;
     LabelC& detail_;

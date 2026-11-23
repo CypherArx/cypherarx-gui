@@ -203,6 +203,31 @@ void ListView::click(std::size_t index, double content_x, int clicks) {
         }
         return;
     }
+    if (options_.multi && on_mark && (press_ctrl_ || press_shift_) && clicks < 2) {
+        std::optional<std::size_t> from;
+        if (press_shift_ && anchor_) {
+            for (std::size_t i = 0; i < rows_.size(); ++i) {
+                if (rows_[i].group == anchor_->first && rows_[i].id == anchor_->second) {
+                    from = i;
+                    break;
+                }
+            }
+        }
+        std::vector<ListRow> picked;
+        if (from) {
+            for (std::size_t i = std::min(*from, index); i <= std::max(*from, index); ++i) {
+                if (!rows_[i].section) {
+                    picked.push_back(rows_[i]);
+                }
+            }
+        } else {
+            picked.push_back(row);
+            anchor_ = {{row.group, row.id}};
+        }
+        on_mark(picked, press_ctrl_ && !press_shift_);
+        return;
+    }
+    anchor_ = {{row.group, row.id}};
     if (on_select) {
         on_select(row);
     }
@@ -258,6 +283,8 @@ void ListView::handle(const PointerEvent& e) {
             focus_visible_ = false;
             pressed_ = over;
             press_clicks_ = e.clicks;
+            press_ctrl_ = e.ctrl;
+            press_shift_ = e.shift;
             if (over) {
                 cursor_ = over;
             }

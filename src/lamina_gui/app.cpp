@@ -158,10 +158,12 @@ App::App()
       search_(base_.add<TextFieldC>(kit_, str::search_hint)),
       add_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::add, kit_.theme->entry_action, cfg_.icons.add})),
       organize_(base_.add<IconButtonC>(kit_, cfg_.icons.organize, false, str::organize)),
+      set_persona_(base_.add<IconButtonC>(kit_, cfg_.icons.set_persona, false, str::set_persona)),
       tree_(base_.add<ListView>(
           kit_, ListOptions{.columns = {{str::col_name, str::col_type, str::col_persona}, {2.0, 1.0, 1.0}},
                             .tree = true,
                             .select_follows_cursor = true,
+                            .multi = true,
                             .row_actions = {{cfg_.icons.login_methods, str::login_methods},
                                             {cfg_.icons.merge_service, str::merge_service},
                                             {cfg_.icons.edit, str::edit_entry},
@@ -305,6 +307,28 @@ void App::open_vault_menu() {
     owned_.push_back(std::move(menu));
 }
 
+void App::open_persona_menu() {
+    if (session_.marked_accounts().empty()) {
+        message(str::select_accounts_first);
+        return;
+    }
+    const gui::IdLabels personas = session_.entry_choices().personas;
+    lm::widgets::MenuOptions options;
+    for (const auto& [id, label] : personas) {
+        options.items.push_back({label, lm::icons::Icon{kit_.icons, cfg_.icons.persona}});
+    }
+    auto menu = std::make_unique<MenuModal>(kit_, std::move(options), [this, personas](std::size_t index) {
+        if (index >= personas.size()) {
+            return;
+        }
+        const std::int64_t id = personas[index].first;
+        check(session_.set_persona_of_marked(id != 0 ? std::optional<std::int64_t>(id) : std::nullopt));
+    });
+    menu->show(set_persona_.bounds(), frame_size_);
+    present(*menu);
+    owned_.push_back(std::move(menu));
+}
+
 void App::open_vault_settings() {
     settings_sheet_.open();
 }
@@ -400,7 +424,18 @@ void App::wire() {
         session_.set_axis(index == 0 ? gui::Axis::Service : gui::Axis::Persona);
     };
     search_.on_change = [this](const std::string& query) { session_.set_query(query); };
-    tree_.on_select = [this](const ListRow& row) { session_.select_entry(row.id); };
+    tree_.on_select = [this](const ListRow& row) {
+        session_.clear_marks();
+        session_.select_entry(row.id);
+    };
+    tree_.on_mark = [this](const std::vector<ListRow>& rows, bool toggle) {
+        std::vector<std::int64_t> ids;
+        for (const ListRow& row : rows) {
+            ids.push_back(row.id);
+        }
+        session_.mark_entries(ids, toggle);
+    };
+    set_persona_.on_click = [this] { open_persona_menu(); };
     tree_.on_toggle = [this](const ListRow& row) {
         if (!collapsed_.erase(row.id)) {
             collapsed_.insert(row.id);
@@ -471,7 +506,8 @@ NodePtr App::build_layout() {
     auto sidebar = lm::layout::column({grow(sidebar_.node())});
     sidebar->padding(padding).spacing(t.control_gap).cross_align(stretch).fill_cross(true).fill_main(true);
 
-    auto entry_bar = lm::layout::row({grow(search_.node()), add_entry_.node(), organize_.node()});
+    auto entry_bar = lm::layout::row(
+        {grow(search_.node()), add_entry_.node(), organize_.node(), set_persona_.node()});
     entry_bar->spacing(t.control_gap).cross_align(center);
     auto entries = lm::layout::column({tabs_.node(), entry_bar, grow(tree_.node())});
     entries->padding(padding).spacing(t.gap).cross_align(stretch).fill_cross(true).fill_main(true);
@@ -572,7 +608,8 @@ void App::sync_tree() {
         row.expandable = has_kids;
         row.expanded = !collapsed_.contains(id);
         row.dim = !p.is_match(id);
-        row.selected = selected && selected->id == id;
+        row.selected = session_.marked().empty() ? selected && selected->id == id
+                                                 : session_.marked().contains(id);
         if (e->is_favorite) {
             row.icon = cfg_.icons.favorite;
         }
@@ -644,6 +681,7 @@ void App::sync() {
     }
     add_entry_.set_enabled(vault);
     organize_.set_enabled(vault);
+    set_persona_.set_enabled(vault);
 
     const bool totp = session_.totp_shown();
     totp_.set_visible(totp);

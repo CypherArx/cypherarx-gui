@@ -179,6 +179,28 @@ int run_selftest() {
         }
         s.set_axis(gui::Axis::Service);
 
+        const auto persona_of = [&](std::int64_t id) {
+            for (const cypherarx::Entry& e : s.entries()) {
+                if (e.id == id) {
+                    return e.persona_id;
+                }
+            }
+            return std::optional<std::int64_t>(-1);
+        };
+        s.clear_marks();
+        s.select_entry(account);
+        const std::vector<std::int64_t> more{moved};
+        s.mark_entries(more, false);
+        ok = expect(s.marked().size() == 2 && s.set_persona_of_marked(std::nullopt).has_value() &&
+                        !persona_of(account).has_value() && !persona_of(moved).has_value(),
+                    "clearing the persona of the marked accounts") &&
+             ok;
+        ok = expect(s.set_persona_of_marked(persona).has_value() && persona_of(account) == persona &&
+                        persona_of(moved) == persona,
+                    "setting the persona of the marked accounts") &&
+             ok;
+        s.clear_marks();
+
         s.start_rotate(pw);
         std::optional<gui::Status> rotated;
         while (!(rotated = s.poll_rotate())) {

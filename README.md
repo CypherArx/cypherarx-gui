@@ -133,6 +133,15 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   number of them, and none for something with no site. A service without a name is shown by
   its first URL, in the tree, in the other axis's column and in the selection lists, and the
   search looks at that URL too. The field types an entry takes are `Session::field_types`.
+- Selecting several entries: in the entry tree, Ctrl and a click adds a row to the selection
+  or takes it out, and Shift and a click selects the rows from the last clicked one to this
+  one. A plain click or an arrow key goes back to one row. The selection is in the model
+  (`Session::marked`), and the list only reports the rows that were picked.
+- Setting a persona for several accounts: the *Set Persona* button next to the organize
+  button opens the personas, with *(none)* first, and gives the chosen one to every selected
+  account (rows of other kinds in the selection are left alone). With one row selected it
+  works on that account. It is how imported accounts, which arrive without a persona unless
+  one was chosen at import, are sorted into personas.
 - Merging services: a service's row has a *Merge Into Another Service* action. It asks which
   service to merge into; that one keeps its name, takes this one's accounts and URLs, and
   this one is removed. It is for services that turned out to be the same, such as one made

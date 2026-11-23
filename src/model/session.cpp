@@ -295,6 +295,7 @@ void Session::close_vault(ClipboardPort& clipboard) {
     finish_rotation();
     wipe_totp();
     vault_settings_ = {};
+    marked_.clear();
     clipboard_.clear_now(clipboard);
     vault_.reset();
     vault_path_.clear();
@@ -439,6 +440,9 @@ void Session::reload_entries() {
         return;
     }
     entries_ = std::move(*list);
+    std::erase_if(marked_, [&](std::int64_t id) {
+        return std::ranges::none_of(entries_, [&](const Entry& e) { return e.id == id; });
+    });
     service_names_.clear();
     const auto urls = vault_->urls();
     if (!urls) {
@@ -564,6 +568,71 @@ void Session::select_entry(std::optional<std::int64_t> id) {
     selected_field_.reset();
     wipe_totp();
     reload_fields();
+}
+
+void Session::mark_entries(std::span<const std::int64_t> ids, bool toggle) {
+    if (marked_.empty() && selected_entry_) {
+        marked_.insert(*selected_entry_);
+    }
+    for (const std::int64_t id : ids) {
+        if (!proj_.find(id)) {
+            continue;
+        }
+        if (toggle && marked_.contains(id)) {
+            marked_.erase(id);
+        } else {
+            marked_.insert(id);
+        }
+    }
+    status_ = format(text::marked_fmt, marked_.size());
+    touch();
+}
+
+void Session::clear_marks() {
+    if (!marked_.empty()) {
+        marked_.clear();
+        touch();
+    }
+}
+
+std::vector<std::int64_t> Session::marked_accounts() const {
+    std::vector<std::int64_t> out;
+    const auto take = [&](std::int64_t id) {
+        const Entry* e = proj_.find(id);
+        if (e && e->entry_type == "account") {
+            out.push_back(id);
+        }
+    };
+    if (marked_.empty()) {
+        if (selected_entry_) {
+            take(*selected_entry_);
+        }
+        return out;
+    }
+    for (const Entry& e : entries_) {
+        if (marked_.contains(e.id)) {
+            take(e.id);
+        }
+    }
+    return out;
+}
+
+Status Session::set_persona_of_marked(std::optional<std::int64_t> persona) {
+    if (!vault_) {
+        return fail(text::no_vault);
+    }
+    const std::vector<std::int64_t> accounts = marked_accounts();
+    if (accounts.empty()) {
+        return fail(text::select_accounts_first);
+    }
+    const auto set = vault_->set_accounts_persona(accounts, persona);
+    if (!set) {
+        return fail(failure(text::set_persona, set.error()).message);
+    }
+    reload_entries();
+    status_ = format(text::persona_set_fmt, accounts.size());
+    touch();
+    return {};
 }
 
 void Session::select_field(std::optional<std::int64_t> id) {

@@ -28,6 +28,11 @@ inline constexpr const char* col_persona = "Persona";
 inline constexpr const char* add_entry = "Add Entry";
 inline constexpr const char* edit_entry = "Edit Entry";
 inline constexpr const char* delete_entry = "Delete Entry";
+inline constexpr const char* set_persona = "Set Persona";
+inline constexpr const char* select_accounts_first =
+    "Select one or more accounts first. Hold Ctrl or Shift and click to select several.";
+inline constexpr const char* marked_fmt = "%zu selected.";
+inline constexpr const char* persona_set_fmt = "Persona set for %zu accounts.";
 inline constexpr const char* merge_service = "Merge Into Another Service";
 inline constexpr const char* merge_into = "Merge into";
 inline constexpr const char* merge_action = "Merge";
