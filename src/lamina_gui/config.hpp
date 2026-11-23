@@ -220,6 +220,10 @@ struct IconConfig {
     lamina::icons::Symbol show = res::icons::visibility;
     lamina::icons::Symbol checked = res::icons::check;
     lamina::icons::Symbol theme_menu = res::icons::palette;
+    lamina::icons::Symbol vault_menu = res::icons::settings;
+    lamina::icons::Symbol vault_settings = res::icons::tune;
+    lamina::icons::Symbol import_csv = res::icons::upload_file;
+    lamina::icons::Symbol rotate_key = res::icons::autorenew;
     lamina::icons::Symbol add = res::icons::add;
     lamina::icons::Symbol edit = res::icons::edit;
     lamina::icons::Symbol remove = res::icons::delete_;
@@ -275,6 +279,8 @@ struct Config {
     const char* category_indent = "    ";
     const char* vault_extension = ".cax";
     const wchar_t* file_filter = L"CypherArx Vault (*.cax)\0*.cax\0All Files (*.*)\0*.*\0";
+    const char* csv_extension = ".csv";
+    const wchar_t* csv_filter = L"CSV (*.csv)\0*.csv\0All Files (*.*)\0*.*\0";
 };
 
 inline const Config& config() {

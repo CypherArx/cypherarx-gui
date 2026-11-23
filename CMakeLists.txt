@@ -36,6 +36,7 @@ lamina_add_resources(cypherarx_gui_resources
   ICONS
     account_circle
     add
+    autorenew
     category
     check
     chevron_right
@@ -55,9 +56,12 @@ lamina_add_resources(cypherarx_gui_resources
     person
     public
     sell
+    settings
     star
     subdirectory_arrow_right
     timer
+    tune
+    upload_file
     visibility
   FILES
     app_icon=resources/app-icon.argb

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <functional>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -38,8 +39,12 @@ class PasswordSheet final : public Sheet {
 public:
     PasswordSheet(const Kit& kit, Host& host);
 
+    using Action = std::function<void(std::span<const std::uint8_t>)>;
+
     std::function<void()> on_started;
     void open(gui::UnlockMode mode, std::filesystem::path file);
+    void ask(const std::string& title, std::filesystem::path file, Action action,
+             std::function<void()> after);
 
 protected:
     NodePtr body() override;
@@ -48,7 +53,8 @@ private:
     void submit();
 
     Host& host_;
-    gui::UnlockMode mode_ = gui::UnlockMode::Open;
+    Action action_;
+    std::function<void()> after_;
     std::filesystem::path file_;
     LabelC& name_;
     LabelC& folder_;
@@ -61,7 +67,7 @@ class BusySheet final : public Sheet {
 public:
     explicit BusySheet(const Kit& kit);
 
-    void open(const std::string& title, const std::filesystem::path& file);
+    void open(const std::string& title, const std::filesystem::path& file, const std::string& note);
 
 protected:
     NodePtr body() override;
@@ -71,6 +77,30 @@ private:
     LabelC& folder_;
     SpinnerC& spinner_;
     LabelC& note_;
+};
+
+class SettingsSheet final : public Sheet {
+public:
+    SettingsSheet(const Kit& kit, Host& host);
+
+    void open();
+
+protected:
+    NodePtr body() override;
+
+private:
+    void submit();
+
+    Host& host_;
+    LabelC& note_;
+    TextFieldC& retention_;
+    TextFieldC& session_;
+    TextFieldC& idle_;
+    CheckC& keyring_;
+    CheckC& screensaver_;
+    CheckC& export_;
+    ButtonC& cancel_;
+    ButtonC& ok_;
 };
 
 class EntrySheet final : public Sheet {

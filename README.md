@@ -167,6 +167,21 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   this version does not know falls back to the first theme and says so in the status line,
   as does a failed save. **Only what has to be known before a vault is open, and is not
   secret, belongs in this file.** Everything else stays in the vault, encrypted.
+- Vault menu (the gear button, with a vault open):
+  - *Vault settings*: the values the core keeps encrypted in the vault (access log
+    retention, session length, idle lock, OS keyring, lock on screensaver, password before
+    an export). **Only the access log retention has an effect so far**; nothing locks the
+    vault by itself yet, and the sheet says so.
+  - *Import CSV*: reads a browser's or a password manager's CSV export into guarded memory
+    and adds one service per site and one account per row. Importing the same file again
+    adds nothing. The result is shown with a reminder that the CSV still holds every
+    password as plain text; the application does not delete the file. KeePass XML and
+    1Password 1PUX are not read.
+  - *Rotate key*: after a confirmation and the master password, every stored value is
+    encrypted again with a new data key, on a worker thread behind the spinner.
+- Access log: copying a field value or a TOTP code, and showing a TOTP code, is recorded in
+  the vault (encrypted), and records past the retention are removed when the vault is
+  opened. Nothing shows the log yet (no "recently used" list or ranking).
 
 Not yet: session continuation via the OS keyring, in-app browser, favicons, import.
 

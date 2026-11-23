@@ -150,6 +150,7 @@ App::App()
       open_(base_.add<ButtonC>(kit_, ButtonSpec{str::open_vault, kit_.theme->vault_action, cfg_.icons.open_vault})),
       close_(base_.add<ButtonC>(kit_, ButtonSpec{str::close_vault, ButtonStyle::outlined, cfg_.icons.close_vault})),
       path_(base_.add<LabelC>(kit_, LabelSpec{"", TypeRole::body_medium, Role::on_surface_variant})),
+      vault_menu_(base_.add<IconButtonC>(kit_, cfg_.icons.vault_menu, false, str::vault_menu)),
       theme_button_(base_.add<IconButtonC>(kit_, cfg_.icons.theme_menu, false, str::theme)),
       sidebar_(base_.add<ListView>(kit_)),
       tabs_(base_.add<TabsC>(kit_, std::vector<TabSpec>{{str::axis_service, cfg_.icons.service},
@@ -183,7 +184,8 @@ App::App()
       entry_sheet_(kit_, *this),
       field_sheet_(kit_, *this),
       organize_sheet_(kit_, *this),
-      login_sheet_(kit_, *this) {
+      login_sheet_(kit_, *this),
+      settings_sheet_(kit_, *this) {
     window_.set_minimum_size(cfg_.window.min_width_dp,
                              cfg_.window.min_height_dp + title_bar_extra(cfg_.window));
     wire();
@@ -279,6 +281,61 @@ void App::open_theme_menu() {
     owned_.push_back(std::move(menu));
 }
 
+void App::open_vault_menu() {
+    if (!session_.has_vault()) {
+        message(str::no_vault);
+        return;
+    }
+    lm::widgets::MenuOptions options;
+    options.items.push_back({str::vault_settings, lm::icons::Icon{kit_.icons, cfg_.icons.vault_settings}});
+    options.items.push_back({str::import_csv, lm::icons::Icon{kit_.icons, cfg_.icons.import_csv}});
+    options.items.push_back({str::rotate_key, lm::icons::Icon{kit_.icons, cfg_.icons.rotate_key}});
+    auto menu = std::make_unique<MenuModal>(kit_, std::move(options), [this](std::size_t index) {
+        const std::array<void (App::*)(), 3> actions{&App::open_vault_settings, &App::import_csv,
+                                                     &App::rotate_key};
+        if (index < actions.size()) {
+            (this->*actions[index])();
+        }
+    });
+    menu->show(vault_menu_.bounds(), frame_size_);
+    present(*menu);
+    owned_.push_back(std::move(menu));
+}
+
+void App::open_vault_settings() {
+    settings_sheet_.open();
+}
+
+void App::import_csv() {
+    const gui::platform::FileDialogOptions options{cfg_.csv_filter, cfg_.csv_extension};
+    const auto file = gui::platform::choose_file_to_open(options);
+    base_.cancel();
+    if (!file) {
+        return;
+    }
+    const auto summary = session_.import_csv(*file);
+    if (!summary) {
+        message(summary.error().message);
+        return;
+    }
+    message(session_.status() + "\n\n" + str::import_reminder);
+}
+
+void App::rotate_key() {
+    confirm(str::confirm_rotate, [this] {
+        const std::filesystem::path file = gui::path_from_utf8(session_.vault_path());
+        password_sheet_.ask(
+            str::rotate_key, file,
+            [this](std::span<const std::uint8_t> password) { session_.start_rotate(password); },
+            [this, file] {
+                if (session_.rotating()) {
+                    busy_sheet_.open(str::rotate_key, file, str::rotating);
+                    present(busy_sheet_);
+                }
+            });
+    });
+}
+
 void App::delete_entry(std::int64_t id) {
     session_.select_entry(id);
     confirm(str::confirm_delete_entry, [this] { check(session_.delete_selected_entry()); });
@@ -320,10 +377,11 @@ void App::wire() {
     open_.on_click = [this] { choose_vault(gui::UnlockMode::Open); };
     close_.on_click = [this] { session_.close_vault(clipboard_); };
     theme_button_.on_click = [this] { open_theme_menu(); };
+    vault_menu_.on_click = [this] { open_vault_menu(); };
     password_sheet_.on_started = [this] {
         busy_sheet_.open(session_.unlock_mode() == gui::UnlockMode::Create ? str::new_vault
                                                                            : str::open_vault,
-                         gui::path_from_utf8(session_.unlock_path()));
+                         gui::path_from_utf8(session_.unlock_path()), str::unlocking);
         present(busy_sheet_);
     };
 
@@ -396,7 +454,7 @@ NodePtr App::build_layout() {
     const auto center = lm::layout::CrossAlign::center;
     const auto padding = lm::layout::Insets::all(t.pane_padding);
 
-    auto toolbar = lm::layout::row({new_.node(), open_.node(), close_.node(), grow(path_.node()), theme_button_.node()});
+    auto toolbar = lm::layout::row({new_.node(), open_.node(), close_.node(), grow(path_.node()), vault_menu_.node(), theme_button_.node()});
     toolbar->spacing(t.control_gap).cross_align(center);
 
     auto sidebar = lm::layout::column({grow(sidebar_.node())});
@@ -696,6 +754,10 @@ Argb App::update(const lm::sdl3::Frame& frame) {
         }
     }
 
+    if (const auto result = session_.poll_rotate()) {
+        busy_sheet_.close();
+        message(*result ? std::string(str::key_rotated) : result->error().message);
+    }
     if (const auto result = session_.poll_unlock(clipboard_)) {
         busy_sheet_.close();
         if (!*result) {
@@ -751,7 +813,8 @@ Argb App::update(const lm::sdl3::Frame& frame) {
 bool App::paint(Canvas& canvas) {
     base_.paint(canvas, scheme_);
     base_.paint_overlays(canvas, scheme_);
-    bool animating = base_.animating() || session_.unlocking() || !theme_mix_.settled();
+    bool animating =
+        base_.animating() || session_.unlocking() || session_.rotating() || !theme_mix_.settled();
     for (const Modal* m : modals_) {
         m->paint(canvas, scheme_);
         animating = animating || m->animating();

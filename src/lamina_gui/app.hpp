@@ -66,6 +66,10 @@ private:
     void notify(const std::string& text);
     void apply_theme(std::size_t index);
     void open_theme_menu();
+    void open_vault_menu();
+    void open_vault_settings();
+    void import_csv();
+    void rotate_key();
     void open_add_menu();
     void delete_entry(std::int64_t id);
     void delete_field(std::int64_t id);
@@ -98,6 +102,7 @@ private:
     ButtonC& open_;
     ButtonC& close_;
     LabelC& path_;
+    IconButtonC& vault_menu_;
     IconButtonC& theme_button_;
     ListView& sidebar_;
     TabsC& tabs_;
@@ -120,6 +125,7 @@ private:
     FieldSheet field_sheet_;
     OrganizeSheet organize_sheet_;
     LoginSheet login_sheet_;
+    SettingsSheet settings_sheet_;
 
     std::vector<Modal*> modals_;
     std::vector<std::unique_ptr<Modal>> owned_;

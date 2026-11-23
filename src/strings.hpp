@@ -136,7 +136,23 @@ inline constexpr std::array<const char*, 3> field_types = {"text", "password", "
 inline constexpr std::array<const char*, 8> login_method_types = {
     "email", "google", "github", "apple", "twitter", "line", "facebook", "other"};
 
+inline constexpr const char* vault_menu = "Vault";
 inline constexpr const char* vault_settings = "Vault settings";
+inline constexpr const char* settings_retention = "Keep the access log for (days, 0 = off)";
+inline constexpr const char* settings_session = "Session length (minutes)";
+inline constexpr const char* settings_idle = "Lock after idle for (minutes, 0 = off)";
+inline constexpr const char* settings_keyring = "Keep the session in the OS keyring";
+inline constexpr const char* settings_screensaver = "Lock when the screensaver starts";
+inline constexpr const char* settings_export = "Ask for the password before an export";
+inline constexpr const char* settings_note =
+    "These are stored in the vault, encrypted. So far only the access log setting has an effect.";
+inline constexpr const char* settings_not_numbers = "Enter whole numbers.";
+inline constexpr const char* confirm_rotate =
+    "Rotate the data key? Every stored value is encrypted again with a new key. The master password is "
+    "asked for next.";
+inline constexpr const char* rotating = "Encrypting with a new key...";
+inline constexpr const char* import_reminder =
+    "The CSV file still holds every password as plain text. Delete it once the import looks right.";
 inline constexpr const char* vault_settings_saved = "Vault settings saved.";
 inline constexpr const char* rotate_key = "Rotate key";
 inline constexpr const char* key_rotated = "The data key was rotated.";

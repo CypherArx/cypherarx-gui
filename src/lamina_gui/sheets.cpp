@@ -2,7 +2,11 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
+#include <optional>
+#include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
 namespace cypherarx::lamina_gui {
@@ -91,6 +95,15 @@ void show_file(LabelC& name, LabelC& folder, const std::filesystem::path& file) 
     folder.set_text(parts.folder);
 }
 
+std::optional<int> whole_number(const std::string& text) {
+    int value = 0;
+    const auto r = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (text.empty() || r.ec != std::errc{} || r.ptr != text.data() + text.size()) {
+        return std::nullopt;
+    }
+    return value;
+}
+
 LabelSpec heading(std::string text) {
     return {std::move(text), TypeRole::title_small, Role::on_surface_variant, false};
 }
@@ -122,9 +135,23 @@ NodePtr PasswordSheet::body() {
 }
 
 void PasswordSheet::open(gui::UnlockMode mode, std::filesystem::path file) {
-    mode_ = mode;
+    ask(mode == gui::UnlockMode::Create ? str::new_vault : str::open_vault, file,
+        [this, mode, file](std::span<const std::uint8_t> password) {
+            host_.session().start_unlock(mode, file, password);
+        },
+        [this] {
+            if (on_started) {
+                on_started();
+            }
+        });
+}
+
+void PasswordSheet::ask(const std::string& title, std::filesystem::path file, Action action,
+                        std::function<void()> after) {
     file_ = std::move(file);
-    set_title(mode == gui::UnlockMode::Create ? str::new_vault : str::open_vault);
+    action_ = std::move(action);
+    after_ = std::move(after);
+    set_title(title);
     show_file(name_, folder_, file_);
     password_.clear();
     password_.set_masked(true);
@@ -138,11 +165,13 @@ void PasswordSheet::submit() {
         host_.message(str::password_empty);
         return;
     }
-    host_.session().start_unlock(mode_, file_, password_.bytes());
+    if (action_) {
+        action_(password_.bytes());
+    }
     password_.clear();
     close();
-    if (on_started) {
-        on_started();
+    if (after_) {
+        after_();
     }
 }
 
@@ -157,10 +186,69 @@ NodePtr BusySheet::body() {
     return vcol(kit_, {name_.node(), folder_.node(), hrow(kit_, {spinner_.node(), note_.node()})});
 }
 
-void BusySheet::open(const std::string& title, const std::filesystem::path& file) {
+void BusySheet::open(const std::string& title, const std::filesystem::path& file,
+                     const std::string& note) {
     set_title(title);
+    note_.set_text(note);
     show_file(name_, folder_, file);
     show();
+}
+
+SettingsSheet::SettingsSheet(const Kit& kit, Host& host)
+    : Sheet(kit, str::vault_settings, kit.cfg->sheet.form_width),
+      host_(host),
+      note_(panel_.add<LabelC>(kit, muted(str::settings_note, true))),
+      retention_(panel_.add<TextFieldC>(kit, str::settings_retention)),
+      session_(panel_.add<TextFieldC>(kit, str::settings_session)),
+      idle_(panel_.add<TextFieldC>(kit, str::settings_idle)),
+      keyring_(panel_.add<CheckC>(kit, str::settings_keyring)),
+      screensaver_(panel_.add<CheckC>(kit, str::settings_screensaver)),
+      export_(panel_.add<CheckC>(kit, str::settings_export)),
+      cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
+      ok_(panel_.add<ButtonC>(kit, ButtonSpec{str::ok, ButtonStyle::filled})) {
+    ok_.on_click = [this] { submit(); };
+    on_submit = [this] { submit(); };
+    on_cancel = [this] { close(); };
+    cancel_.on_click = on_cancel;
+}
+
+NodePtr SettingsSheet::body() {
+    return vcol(kit_, {note_.node(), retention_.node(), session_.node(), idle_.node(), keyring_.node(),
+                       screensaver_.node(), export_.node(),
+                       hrow(kit_, {lm::layout::flexible_space(), cancel_.node(), ok_.node()})});
+}
+
+void SettingsSheet::open() {
+    const cypherarx::Settings& s = host_.session().vault_settings();
+    retention_.set_text(std::to_string(s.log_retention_days));
+    session_.set_text(std::to_string(s.session_duration_minutes));
+    idle_.set_text(std::to_string(s.session_lock_idle_minutes));
+    keyring_.set_checked(s.session_use_os_keyring);
+    screensaver_.set_checked(s.session_lock_on_screensaver);
+    export_.set_checked(s.session_require_password_for_export);
+    show();
+    panel_.focus(retention_);
+    host_.present(*this);
+}
+
+void SettingsSheet::submit() {
+    const auto retention = whole_number(retention_.text());
+    const auto session = whole_number(session_.text());
+    const auto idle = whole_number(idle_.text());
+    if (!retention || !session || !idle) {
+        host_.message(str::settings_not_numbers);
+        return;
+    }
+    cypherarx::Settings s;
+    s.log_retention_days = *retention;
+    s.session_duration_minutes = *session;
+    s.session_lock_idle_minutes = *idle;
+    s.session_use_os_keyring = keyring_.checked();
+    s.session_lock_on_screensaver = screensaver_.checked();
+    s.session_require_password_for_export = export_.checked();
+    if (host_.check(host_.session().set_vault_settings(s))) {
+        close();
+    }
 }
 
 EntrySheet::EntrySheet(const Kit& kit, Host& host)
