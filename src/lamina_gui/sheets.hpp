@@ -103,6 +103,30 @@ private:
     ButtonC& ok_;
 };
 
+class ImportSheet final : public Sheet {
+public:
+    ImportSheet(const Kit& kit, Host& host);
+
+    std::function<void(const std::filesystem::path&, std::optional<std::int64_t>)> on_import;
+    void open(std::filesystem::path file);
+
+protected:
+    NodePtr body() override;
+
+private:
+    void submit();
+
+    Host& host_;
+    std::filesystem::path file_;
+    gui::IdLabels personas_;
+    LabelC& name_;
+    LabelC& folder_;
+    SelectField& persona_;
+    LabelC& hint_;
+    ButtonC& cancel_;
+    ButtonC& ok_;
+};
+
 class EntrySheet final : public Sheet {
 public:
     EntrySheet(const Kit& kit, Host& host);

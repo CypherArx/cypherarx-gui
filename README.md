@@ -174,7 +174,8 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
     vault by itself yet, and the sheet says so.
   - *Import CSV*: reads a browser's or a password manager's CSV export into guarded memory
     and adds one service per site and one account per row, whose fields are the user name
-    (*Email* or *ID* by its shape), the password and the TOTP secret. Importing the same file again
+    (*Email* or *ID* by its shape), the password and the TOTP secret. After the file is chosen a sheet asks for a persona; every
+    account in the file gets it, and accounts already in the vault are not changed. Importing the same file again
     adds nothing. The result is shown with a reminder that the CSV still holds every
     password as plain text; the application does not delete the file. KeePass XML and
     1Password 1PUX are not read.

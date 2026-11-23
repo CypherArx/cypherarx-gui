@@ -151,6 +151,9 @@ inline constexpr const char* confirm_rotate =
     "Rotate the data key? Every stored value is encrypted again with a new key. The master password is "
     "asked for next.";
 inline constexpr const char* rotating = "Encrypting with a new key...";
+inline constexpr const char* import_action = "Import";
+inline constexpr const char* import_persona_hint =
+    "Every account in the file gets this persona. Accounts that are already in the vault are not changed.";
 inline constexpr const char* import_reminder =
     "The CSV file still holds every password as plain text. Delete it once the import looks right.";
 inline constexpr const char* vault_settings_saved = "Vault settings saved.";

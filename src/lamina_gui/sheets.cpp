@@ -251,6 +251,44 @@ void SettingsSheet::submit() {
     }
 }
 
+ImportSheet::ImportSheet(const Kit& kit, Host& host)
+    : Sheet(kit, str::import_csv, kit.cfg->sheet.form_width),
+      host_(host),
+      name_(panel_.add<LabelC>(kit, file_name(kit))),
+      folder_(panel_.add<LabelC>(kit, file_folder(kit))),
+      persona_(panel_.add<SelectField>(kit, str::persona, &ThemePreset::sheet)),
+      hint_(panel_.add<LabelC>(kit, muted(str::import_persona_hint, true))),
+      cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
+      ok_(panel_.add<ButtonC>(kit, ButtonSpec{str::import_action, ButtonStyle::filled})) {
+    ok_.on_click = [this] { submit(); };
+    on_submit = [this] { submit(); };
+    on_cancel = [this] { close(); };
+    cancel_.on_click = on_cancel;
+}
+
+NodePtr ImportSheet::body() {
+    return vcol(kit_, {name_.node(), folder_.node(), persona_.node(), hint_.node(),
+                       hrow(kit_, {lm::layout::flexible_space(), cancel_.node(), ok_.node()})});
+}
+
+void ImportSheet::open(std::filesystem::path file) {
+    file_ = std::move(file);
+    show_file(name_, folder_, file_);
+    personas_ = host_.session().entry_choices().personas;
+    persona_.set_items(labels(personas_));
+    show();
+    panel_.focus(persona_);
+    host_.present(*this);
+}
+
+void ImportSheet::submit() {
+    const std::int64_t id = id_at(personas_, persona_.index());
+    close();
+    if (on_import) {
+        on_import(file_, id != 0 ? std::optional<std::int64_t>(id) : std::nullopt);
+    }
+}
+
 EntrySheet::EntrySheet(const Kit& kit, Host& host)
     : Sheet(kit, str::add_entry, kit.cfg->sheet.form_width),
       host_(host),

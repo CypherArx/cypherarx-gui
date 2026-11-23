@@ -126,7 +126,8 @@ public:
     void start_rotate(std::span<const std::uint8_t> password);
     bool rotating() const { return rotate_.valid(); }
     std::optional<Status> poll_rotate();
-    Outcome<ImportSummary> import_csv(const std::filesystem::path& file);
+    Outcome<ImportSummary> import_csv(const std::filesystem::path& file,
+                                      std::optional<std::int64_t> persona = std::nullopt);
 
     Axis axis() const { return axis_; }
     void set_axis(Axis axis);

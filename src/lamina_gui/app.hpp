@@ -69,6 +69,7 @@ private:
     void open_vault_menu();
     void open_vault_settings();
     void import_csv();
+    void run_import(const std::filesystem::path& file, std::optional<std::int64_t> persona);
     void rotate_key();
     void open_add_menu();
     void delete_entry(std::int64_t id);
@@ -126,6 +127,7 @@ private:
     OrganizeSheet organize_sheet_;
     LoginSheet login_sheet_;
     SettingsSheet settings_sheet_;
+    ImportSheet import_sheet_;
 
     std::vector<Modal*> modals_;
     std::vector<std::unique_ptr<Modal>> owned_;

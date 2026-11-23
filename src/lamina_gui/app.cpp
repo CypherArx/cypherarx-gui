@@ -185,7 +185,8 @@ App::App()
       field_sheet_(kit_, *this),
       organize_sheet_(kit_, *this),
       login_sheet_(kit_, *this),
-      settings_sheet_(kit_, *this) {
+      settings_sheet_(kit_, *this),
+      import_sheet_(kit_, *this) {
     window_.set_minimum_size(cfg_.window.min_width_dp,
                              cfg_.window.min_height_dp + title_bar_extra(cfg_.window));
     wire();
@@ -310,10 +311,13 @@ void App::import_csv() {
     const gui::platform::FileDialogOptions options{cfg_.csv_filter, cfg_.csv_extension};
     const auto file = gui::platform::choose_file_to_open(options);
     base_.cancel();
-    if (!file) {
-        return;
+    if (file) {
+        import_sheet_.open(*file);
     }
-    const auto summary = session_.import_csv(*file);
+}
+
+void App::run_import(const std::filesystem::path& file, std::optional<std::int64_t> persona) {
+    const auto summary = session_.import_csv(file, persona);
     if (!summary) {
         message(summary.error().message);
         return;
@@ -378,6 +382,8 @@ void App::wire() {
     close_.on_click = [this] { session_.close_vault(clipboard_); };
     theme_button_.on_click = [this] { open_theme_menu(); };
     vault_menu_.on_click = [this] { open_vault_menu(); };
+    import_sheet_.on_import = [this](const std::filesystem::path& file,
+                                     std::optional<std::int64_t> persona) { run_import(file, persona); };
     password_sheet_.on_started = [this] {
         busy_sheet_.open(session_.unlock_mode() == gui::UnlockMode::Create ? str::new_vault
                                                                            : str::open_vault,

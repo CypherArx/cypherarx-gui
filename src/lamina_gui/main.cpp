@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -116,11 +117,17 @@ int run_selftest() {
             std::ofstream out(csv, std::ios::binary);
             out << "name,url,username,password\nImported,https://imported.example,me,pw\n";
         }
-        const auto imported = s.import_csv(csv);
+        const auto imported = s.import_csv(csv, persona);
         fs::remove(csv, ec);
         ok = expect(imported.has_value() && imported->services == 1 && imported->accounts == 1 &&
                         imported->fields == 2,
                     "import") &&
+             ok;
+        ok = expect(std::any_of(s.entries().begin(), s.entries().end(),
+                                [&](const cypherarx::Entry& e) {
+                                    return e.label == "me" && e.persona_id == persona;
+                                }),
+                    "the imported account has the chosen persona") &&
              ok;
 
         s.start_rotate(pw);

@@ -175,7 +175,8 @@ std::optional<Status> Session::poll_rotate() {
     return Status{};
 }
 
-Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file) {
+Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file,
+                                           std::optional<std::int64_t> persona) {
     if (!vault_) {
         return fail(text::no_vault);
     }
@@ -216,7 +217,8 @@ Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file) {
                   .totp_type = text::import_totp_type,
                   .email_label = text::import_email_label,
                   .id_label = text::import_id_label,
-                  .identifier_type = text::import_identifier_type});
+                  .identifier_type = text::import_identifier_type,
+                  .persona_id = persona});
     if (!summary) {
         return fail(failure(text::import_csv, summary.error()).message);
     }
