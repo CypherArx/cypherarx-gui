@@ -185,6 +185,7 @@ private:
 
     Host& host_;
     gui::FieldDraft draft_;
+    std::vector<std::string> types_;
     TextFieldC& label_;
     SelectField& type_;
     SecretField& value_;

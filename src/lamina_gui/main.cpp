@@ -9,6 +9,7 @@
 #include <optional>
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -95,7 +96,20 @@ int run_selftest() {
         s.select_entry(service);
         gui::FieldDraft stray = s.new_field_draft();
         stray.label = "x";
-        ok = expect(!s.commit_field(stray, {}).has_value(), "no fields on a service") && ok;
+        stray.type = "password";
+        ok = expect(!s.commit_field(stray, {}).has_value(), "a service takes only URL fields") && ok;
+
+        const std::int64_t bare = add_entry(s, "service", "");
+        gui::FieldDraft site = s.new_field_draft();
+        site.label = "URL";
+        const std::string_view site_url = "https://bare.example";
+        ok = expect(bare != 0 &&
+                        s.commit_field(site, {reinterpret_cast<const std::uint8_t*>(site_url.data()),
+                                              site_url.size()})
+                            .has_value() &&
+                        s.selected_entry() && s.entry_title(*s.selected_entry()) == site_url,
+                    "an unnamed service shows its URL") &&
+             ok;
 
         s.select_entry(account);
         gui::FieldDraft field = s.new_field_draft();
@@ -121,7 +135,7 @@ int run_selftest() {
         const auto imported = s.import_csv(csv, persona);
         fs::remove(csv, ec);
         ok = expect(imported.has_value() && imported->services == 1 && imported->accounts == 1 &&
-                        imported->fields == 2,
+                        imported->fields == 3,
                     "import") &&
              ok;
         ok = expect(std::any_of(s.entries().begin(), s.entries().end(),

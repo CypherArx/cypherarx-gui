@@ -218,6 +218,7 @@ Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file,
                   .email_label = text::import_email_label,
                   .id_label = text::import_id_label,
                   .identifier_type = text::import_identifier_type,
+                  .url_label = text::import_url_label,
                   .persona_id = persona});
     if (!summary) {
         return fail(failure(text::import_csv, summary.error()).message);
@@ -343,7 +344,7 @@ const Category* Session::find_category(std::int64_t id) const {
 
 EntryTraits Session::traits(std::string_view type) {
     if (type == "service") {
-        return {.has_category = true};
+        return {.has_category = true, .has_fields = true, .name_optional = true};
     }
     if (type == "account") {
         return {.has_fields = true, .has_login_methods = true, .name_optional = true};
@@ -354,7 +355,17 @@ EntryTraits Session::traits(std::string_view type) {
     return {};
 }
 
+std::span<const char* const> Session::field_types(std::string_view entry_type) {
+    if (entry_type == "service") {
+        return text::service_field_types;
+    }
+    return text::field_types;
+}
+
 std::string Session::entry_title(const Entry& e) const {
+    if (e.entry_type == "service" && e.label.empty()) {
+        return proj_.label_of(e.id);
+    }
     if (!e.label.empty() || e.entry_type != "account") {
         return e.label;
     }
@@ -411,6 +422,20 @@ void Session::reload_entries() {
         return;
     }
     entries_ = std::move(*list);
+    service_names_.clear();
+    const auto urls = vault_->urls();
+    if (!urls) {
+        status_ = failure(text::entries, urls.error()).message;
+        return;
+    }
+    for (const EntryUrl& url : *urls) {
+        service_names_.try_emplace(url.entry_id, url.value);
+    }
+    for (const Entry& e : entries_) {
+        if (e.entry_type == "service" && e.label.empty()) {
+            service_names_.try_emplace(e.id, e.url.empty() ? std::string(text::unnamed_service) : e.url);
+        }
+    }
     reload_organization();
     tags_by_entry_.clear();
     if (auto pairs = vault_->list_entry_tags()) {
@@ -447,13 +472,15 @@ void Session::rebuild_projection() {
                 }
             }
             if (!filter_.query.empty() && !contains_ci(e.label, filter_.query) &&
-                !contains_ci(e.display_name, filter_.query) && !contains_ci(e.url, filter_.query)) {
+                !contains_ci(e.display_name, filter_.query) && !contains_ci(e.url, filter_.query) &&
+                !(service_names_.contains(e.id) &&
+                  contains_ci(service_names_.at(e.id), filter_.query))) {
                 return false;
             }
             return true;
         };
     }
-    proj_ = Projection::build(entries_, axis_, match);
+    proj_ = Projection::build(entries_, axis_, match, service_names_);
     if (vault_) {
         const char* axis_name = axis_ == Axis::Persona ? text::axis_persona : text::axis_service;
         status_ = proj_.filtered ? format(text::status_filtered_fmt, proj_.visible_count(),
@@ -542,7 +569,7 @@ EntryChoices Session::entry_choices() const {
     }
     for (const auto& e : entries_) {
         if (e.entry_type == "service") {
-            c.services.emplace_back(e.id, e.label);
+            c.services.emplace_back(e.id, proj_.label_of(e.id));
         } else if (e.entry_type == "persona") {
             c.personas.emplace_back(e.id, e.label);
         } else if (e.entry_type == "account") {
@@ -751,7 +778,8 @@ Status Session::delete_tag(std::int64_t id) {
 
 FieldDraft Session::new_field_draft() const {
     FieldDraft d;
-    d.type = text::field_types.front();
+    const Entry* owner = selected_entry();
+    d.type = field_types(owner ? std::string_view(owner->entry_type) : std::string_view()).front();
     return d;
 }
 
@@ -790,6 +818,16 @@ Status Session::commit_field(const FieldDraft& d, std::span<const std::uint8_t> 
     if (d.label.empty()) {
         return fail(text::label_required);
     }
+    const bool on_service = owner && owner->entry_type == "service";
+    if (owner) {
+        bool allowed = false;
+        for (const char* type : field_types(owner->entry_type)) {
+            allowed = allowed || d.type == type;
+        }
+        if (!allowed) {
+            return fail(text::field_type_not_allowed);
+        }
+    }
     if (d.editing) {
         if (auto r = vault_->update_field(*d.editing, d.label, d.type, value, d.notes); !r) {
             return fail(failure(text::edit_field, r.error()).message);
@@ -804,6 +842,9 @@ Status Session::commit_field(const FieldDraft& d, std::span<const std::uint8_t> 
         }
         selected_field_ = r->id;
     }
+    if (on_service) {
+        reload_entries();
+    }
     reload_fields();
     return {};
 }
@@ -812,6 +853,8 @@ Status Session::delete_selected_field() {
     if (!vault_ || !selected_field_) {
         return fail(text::select_field_first);
     }
+    const Entry* owner = selected_entry();
+    const bool on_service = owner && owner->entry_type == "service";
     if (auto r = vault_->delete_field(*selected_field_); !r) {
         return fail(failure(text::delete_field, r.error()).message);
     }
@@ -819,6 +862,9 @@ Status Session::delete_selected_field() {
         wipe_totp();
     }
     selected_field_.reset();
+    if (on_service) {
+        reload_entries();
+    }
     reload_fields();
     return {};
 }

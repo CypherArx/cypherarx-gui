@@ -143,6 +143,7 @@ public:
     IdLabels flat_categories() const;
     const Category* find_category(std::int64_t id) const;
     static EntryTraits traits(std::string_view type);
+    static std::span<const char* const> field_types(std::string_view entry_type);
     std::string entry_title(const Entry& e) const;
     std::string caption_of(std::optional<std::int64_t> id) const;
     std::string entry_detail(const Entry& e) const;
@@ -212,6 +213,7 @@ private:
     std::vector<Category> categories_;
     std::vector<Tag> tags_;
     std::unordered_map<std::int64_t, std::vector<std::int64_t>> tags_by_entry_;
+    std::unordered_map<std::int64_t, std::string> service_names_;
     Projection proj_;
     Axis axis_ = Axis::Service;
     Filter filter_;

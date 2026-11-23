@@ -82,8 +82,10 @@ void group_accounts_by_cross_parent(Projection& p, Axis axis) {
 }
 
 Projection Projection::build(const std::vector<Entry>& entries, Axis axis,
-                             const EntryPredicate& match) {
+                             const EntryPredicate& match,
+                             std::unordered_map<std::int64_t, std::string> names) {
     Projection p;
+    p.names = std::move(names);
     for (const auto& e : entries) {
         p.by_id[e.id] = &e;
     }
@@ -151,7 +153,15 @@ std::string Projection::label_of(std::optional<std::int64_t> id) const {
         return {};
     }
     const Entry* e = find(*id);
-    return e ? e->label : std::string("#") + std::to_string(*id);
+    if (!e) {
+        return std::string("#") + std::to_string(*id);
+    }
+    if (e->label.empty()) {
+        if (const auto name = names.find(*id); name != names.end()) {
+            return name->second;
+        }
+    }
+    return e->label;
 }
 
 std::optional<std::int64_t> Projection::cross_parent(const Entry& e, Axis axis) const {

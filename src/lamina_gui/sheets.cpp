@@ -367,6 +367,7 @@ void EntrySheet::apply_type() {
     const std::string typed = name_field().text();
     name_.set_visible(kind.name_optional);
     name_hint_.set_visible(kind.name_optional);
+    name_hint_.set_text(t == "service" ? str::service_name_hint : str::account_name_hint);
     label_.set_visible(!kind.name_optional);
     name_field().set_text(typed);
     category_.set_visible(kind.has_category);
@@ -477,7 +478,6 @@ FieldSheet::FieldSheet(const Kit& kit, Host& host)
       notes_(panel_.add<TextFieldC>(kit, str::notes)),
       cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
       ok_(panel_.add<ButtonC>(kit, ButtonSpec{str::ok, ButtonStyle::filled})) {
-    type_.set_items(labels(str::field_types));
     type_.on_change = [this](std::size_t) { apply_type(); };
     show_.on_change = [this](bool) { apply_type(); };
     generate_.on_click = [this] {
@@ -494,7 +494,7 @@ FieldSheet::FieldSheet(const Kit& kit, Host& host)
 }
 
 std::string FieldSheet::type() const {
-    return str::field_types[std::min(type_.index(), str::field_types.size() - 1)];
+    return types_.empty() ? std::string() : types_[std::min(type_.index(), types_.size() - 1)];
 }
 
 NodePtr FieldSheet::body() {
@@ -543,7 +543,17 @@ void FieldSheet::open(gui::FieldDraft draft) {
     draft_ = std::move(draft);
     set_title(draft_.editing ? str::edit_field : str::add_field);
     label_.set_text(draft_.label);
-    type_.set_index(index_of(str::field_types, draft_.type));
+    const cypherarx::Entry* owner = host_.session().selected_entry();
+    types_.clear();
+    std::size_t index = 0;
+    for (const char* type :
+         gui::Session::field_types(owner ? std::string_view(owner->entry_type) : std::string_view())) {
+        if (draft_.type == type) {
+            index = types_.size();
+        }
+        types_.emplace_back(type);
+    }
+    type_.set_items(types_, index);
     notes_.set_text(draft_.notes);
     show_.set_checked(false);
     apply_type();

@@ -32,10 +32,12 @@ struct Projection {
     std::unordered_map<std::int64_t, std::vector<std::int64_t>> children;
     std::unordered_map<std::int64_t, const Entry*> by_id;
     std::unordered_set<std::int64_t> matched;
+    std::unordered_map<std::int64_t, std::string> names;
     bool filtered = false;
 
     static Projection build(const std::vector<Entry>& entries, Axis axis,
-                            const EntryPredicate& match = {});
+                            const EntryPredicate& match = {},
+                            std::unordered_map<std::int64_t, std::string> names = {});
 
     const Entry* find(std::int64_t id) const;
     std::string label_of(std::optional<std::int64_t> id) const;

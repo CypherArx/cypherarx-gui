@@ -120,6 +120,11 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   accounts under a persona, and the accounts without one, are ordered by their service and
   then by their own name, so the accounts of one service stay together; the service axis
   keeps the order of creation.
+- A service's name, its URLs and its login URL are separate. The name is optional. The URLs
+  are fields of the type `url` on the service (a service takes no other kind of field), any
+  number of them, and none for something with no site. A service without a name is shown by
+  its first URL, in the tree, in the other axis's column and in the selection lists, and the
+  search looks at that URL too. The field types an entry takes are `Session::field_types`.
 - The sidebar picks one place at a time: all items, the favorites, one category (with its
   sub-categories) or one tag, so only one of its rows is ever highlighted. Search (label /
   display name / URL, ASCII case-insensitive) narrows that further. Matching entries keep their
@@ -176,7 +181,8 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
     an export). **Only the access log retention has an effect so far**; nothing locks the
     vault by itself yet, and the sheet says so.
   - *Import CSV*: reads a browser's or a password manager's CSV export into guarded memory
-    and adds one service per site and one account per row, whose fields are the user name
+    and adds one service per site, found by any of its URLs or made with the site as its URL
+    field and the row's URL as its login URL, and one account per row, whose fields are the user name
     (*Email* or *ID* by its shape), the password and the TOTP secret. After the file is chosen a sheet asks for a persona; every
     account in the file gets it, and accounts already in the vault are not changed. Importing the same file again
     adds nothing. The result is shown with a reminder that the CSV still holds every

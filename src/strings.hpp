@@ -129,10 +129,14 @@ inline constexpr const char* account_name_hint =
 inline constexpr const char* no_persona = "(no persona)";
 inline constexpr const char* all_items = "All items";
 inline constexpr const char* favorites = "Favorites";
-inline constexpr const char* fields_on_accounts = "Fields belong to accounts and their children.";
+inline constexpr const char* fields_on_accounts = "Fields belong to services, accounts and their children.";
+inline constexpr const char* field_type_not_allowed = "That kind of field does not belong on this entry.";
+inline constexpr const char* unnamed_service = "(unnamed)";
+inline constexpr const char* service_name_hint = "Leave the name empty to show the service's URL instead.";
 
 inline constexpr std::array<const char*, 4> entry_types = {"service", "persona", "account", "child"};
 inline constexpr std::array<const char*, 3> field_types = {"text", "password", "totp"};
+inline constexpr std::array<const char*, 1> service_field_types = {"url"};
 inline constexpr std::array<const char*, 8> login_method_types = {
     "email", "google", "github", "apple", "twitter", "line", "facebook", "other"};
 
@@ -175,6 +179,7 @@ inline constexpr const char* import_totp_type = "totp";
 inline constexpr const char* import_email_label = "Email";
 inline constexpr const char* import_id_label = "ID";
 inline constexpr const char* import_identifier_type = "text";
+inline constexpr const char* import_url_label = "URL";
 
 inline constexpr const char* err_cannot_open_file = "Could not open the file.";
 inline constexpr const char* err_already_initialized = "A vault already exists at that path.";
