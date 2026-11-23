@@ -153,10 +153,11 @@ double ListView::check_left(const ListRow& row) const {
 double ListView::text_left(const ListRow& row) const {
     const ListConfig& t = kit_.cfg->list;
     double x = check_left(row);
-    if (options_.checks) {
+    const bool boxed = options_.checks && row.check.has_value();
+    if (boxed) {
         x += t.check_size + t.icon_gap;
     }
-    if (options_.tree || row.icon) {
+    if (row.icon || (options_.tree && !boxed)) {
         x += t.icon_size + t.icon_gap;
     }
     return x;
