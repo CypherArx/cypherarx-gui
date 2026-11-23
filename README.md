@@ -89,6 +89,9 @@ reason (and to make a later translation a single-file change).
 
 - Create / open a vault (`*.cax`) with a master password. The password is typed into guarded
   memory and wiped after key derivation, which runs on a worker thread behind a spinner.
+  The path of the vault opened last is saved, and the next start asks for its password
+  straight away; Cancel leaves the window with no vault open. If that file is not there, the
+  status line says so and the saved path is kept.
 - Three columns: a **sidebar** that chooses what to look at, the **entry tree** with a tab for
   each axis and a search box, and the **fields** pane for the selected entry.
 - Entry tree with two views of the same data: **Service axis** (tree by `parent_id`) and
@@ -137,7 +140,9 @@ reason (and to make a later translation a single-file change).
 - Preferences: the theme has to be known before any vault is open, so it cannot live in the
   vault's encrypted settings. It is kept in `preferences.conf` in the system's per-user
   application data directory (`%APPDATA%\CypherArx\CypherArx` on Windows), as plain
-  `key = value` lines; today the only key is `theme`, holding the `id` of a `ThemePreset`.
+  `key = value` lines: `theme` holds the `id` of a `ThemePreset` and `vault` the path of the
+  vault opened last (one path, no history). The path is not treated as a secret: whoever can
+  read this file can also search the disk for vault files.
   The file is replaced through a temporary file. A missing file means the defaults; a theme
   this version does not know falls back to the first theme and says so in the status line,
   as does a failed save. **Only what has to be known before a vault is open, and is not

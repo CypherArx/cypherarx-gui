@@ -7,6 +7,7 @@ namespace cypherarx::gui {
 
 struct Preferences {
     std::string theme;
+    std::string vault;
 
     bool operator==(const Preferences&) const = default;
 };

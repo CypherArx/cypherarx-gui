@@ -113,12 +113,12 @@ int run_selftest() {
     fs::remove_all(prefs.parent_path(), ec);
     ok = expect(gui::load_preferences(prefs) == gui::Preferences{}, "missing preferences are the defaults") &&
          ok;
-    const gui::Preferences chosen{.theme = "light"};
+    const gui::Preferences chosen{.theme = "light", .vault = "C:\\vaults\\a = b.cax"};
     ok = expect(gui::save_preferences(prefs, chosen) && gui::load_preferences(prefs) == chosen,
                 "preferences round trip") &&
          ok;
     ok = expect(gui::save_preferences(prefs, gui::Preferences{.theme = "dark-tonal"}) &&
-                    gui::load_preferences(prefs).theme == "dark-tonal",
+                    gui::load_preferences(prefs) == gui::Preferences{.theme = "dark-tonal"},
                 "preferences are replaced") &&
          ok;
     fs::remove_all(prefs.parent_path(), ec);

@@ -16,6 +16,7 @@ struct Field {
 
 constexpr std::array fields{
     Field{"theme", &Preferences::theme},
+    Field{"vault", &Preferences::vault},
 };
 
 constexpr char separator = '=';

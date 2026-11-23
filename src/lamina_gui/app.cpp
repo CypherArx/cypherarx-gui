@@ -6,6 +6,7 @@
 #include <cmath>
 #include <optional>
 #include <string>
+#include <system_error>
 #include <utility>
 
 #include "lamina/tokens/motion.hpp"
@@ -161,12 +162,40 @@ App::App()
       field_sheet_(kit_, *this),
       organize_sheet_(kit_, *this),
       login_sheet_(kit_, *this) {
-    if (!preferences_.theme.empty() && !theme_with_id(cfg_.theme, preferences_.theme)) {
-        session_.report(str::theme_unknown);
-    }
     window_.set_minimum_size(cfg_.window.min_width_dp,
                              cfg_.window.min_height_dp + title_bar_extra(cfg_.window));
     wire();
+    if (!preferences_.theme.empty() && !theme_with_id(cfg_.theme, preferences_.theme)) {
+        notify(str::theme_unknown);
+    }
+    offer_last_vault();
+}
+
+void App::notify(const std::string& text) {
+    if (!notice_.empty()) {
+        notice_ += str::notice_separator;
+    }
+    notice_ += text;
+    session_.report(notice_);
+}
+
+void App::save_preferences() {
+    if (!gui::save_preferences(preferences_file_, preferences_)) {
+        session_.report(str::preferences_not_saved);
+    }
+}
+
+void App::offer_last_vault() {
+    if (preferences_.vault.empty()) {
+        return;
+    }
+    std::filesystem::path file = gui::path_from_utf8(preferences_.vault);
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(file, ec)) {
+        notify(std::string(str::last_vault_missing) + str::notice_separator + preferences_.vault);
+        return;
+    }
+    password_sheet_.open(gui::UnlockMode::Open, std::move(file));
 }
 
 double App::bar_height() const {
@@ -212,9 +241,7 @@ void App::apply_theme(std::size_t index) {
     add_entry_.set_style(theme.entry_action);
     add_field_.set_style(theme.field_action);
     preferences_.theme = theme.id;
-    if (!gui::save_preferences(preferences_file_, preferences_)) {
-        session_.report(str::theme_not_saved);
-    }
+    save_preferences();
 }
 
 void App::open_theme_menu() {
@@ -646,6 +673,9 @@ Argb App::update(const lm::sdl3::Frame& frame) {
         busy_sheet_.close();
         if (!*result) {
             message(result->error().message);
+        } else if (preferences_.vault != session_.vault_path()) {
+            preferences_.vault = session_.vault_path();
+            save_preferences();
         }
     }
     session_.tick(clipboard_);
