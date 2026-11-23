@@ -5,8 +5,8 @@ call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build
 set "VCPKG_ROOT=C:\dev\vcpkg"
 set "PATH=C:\Qt\Tools\CMake_64\bin;C:\Qt\Tools\Ninja;%PATH%"
 cd /d "%~dp0"
-cmake --preset default || exit /b 1
-cmake --build --preset default || exit /b 1
+cmake --preset release || exit /b 1
+cmake --build --preset release || exit /b 1
 echo.
 echo Build OK. Run with: run.bat
 endlocal

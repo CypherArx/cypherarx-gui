@@ -31,19 +31,27 @@ C++23 コンパイラ、CMake 3.25 以上、Ninja、vcpkg（`VCPKG_ROOT` 設定�
 ```sh
 git submodule update --init --recursive
 python -m pip install -r external/lamina-ui/tools/icon-subset/requirements.txt
-cmake --preset default
-cmake --build --preset default
+cmake --preset release
+cmake --build --preset release
 ```
+
+プリセットは 2 つあります。`release` は、使うための実行ファイルを最適化ありで `build-release/` に
+作ります。`default` は、最適化なしの Debug の実行ファイルを `build/` に作ります。スモークテストと
+デバッグ用で、Debug のライブラリの実行時検査が効きます。**速さを Debug のビルドで判断しないで
+ください。** lamina-ui はすべてのピクセルを CPU で描き（GPU はできあがったフレームを表示する
+だけなので、使用率はほぼ 0 % のままです）、Debug で構成すると ThorVG などの依存ライブラリも
+最適化なしの版がリンクされます。そのためシートを開くとコアを 1 つ使い切ってカクつきますが、
+Release のビルドでは滑らかです。
 
 Python はアイコンのために使います。GUI が使う Material Symbols は `CMakeLists.txt` の
 `lamina_add_resources` に並べてあり、ビルドが lamina-ui の同梱フォントからその分だけ切り出して
 （`pip` の行で入る fontTools と brotli を使います）実行ファイルに組み込みます。そのため素材の
 フォルダーは要りません。
 
-`build/cypherarx_gui` で起動します。ウィンドウ無しのスモークテストは次のとおりです。
+`build-release/cypherarx_gui` で起動します。ウィンドウ無しのスモークテストは次のとおりです。
 
 ```sh
-./build/cypherarx_gui --selftest
+./build-release/cypherarx_gui --selftest
 ```
 
 スモークテストは `src/model/` のモデル層を動かします。金庫を作り、サービス・名義・アカウントを

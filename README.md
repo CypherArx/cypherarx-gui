@@ -30,19 +30,27 @@ submodules:
 ```sh
 git submodule update --init --recursive
 python -m pip install -r external/lamina-ui/tools/icon-subset/requirements.txt
-cmake --preset default
-cmake --build --preset default
+cmake --preset release
+cmake --build --preset release
 ```
+
+There are two presets. `release` builds the executable to use, optimized, in
+`build-release/`. `default` builds an unoptimized Debug executable in `build/`, for the smoke
+test and for debugging, where the runtime checks of the Debug libraries are on. **Do not
+judge the speed by the Debug build.** lamina-ui draws every pixel on the CPU (the GPU only
+shows the finished frame, so it stays near 0 %), and a Debug configuration also links the
+unoptimized builds of ThorVG and the other dependencies; opening a sheet then pins a core
+and stutters, while the Release build is smooth.
 
 Python is for the icons. The Material Symbols the GUI uses are listed under
 `lamina_add_resources` in `CMakeLists.txt`; the build cuts them out of the font that lamina-ui
 vendors (with fontTools and brotli, which the `pip` line installs) and compiles them into the
 executable, so it needs no asset folder.
 
-Run `build/cypherarx_gui`, or a headless smoke test with no window:
+Run `build-release/cypherarx_gui`, or a headless smoke test with no window:
 
 ```sh
-./build/cypherarx_gui --selftest
+./build-release/cypherarx_gui --selftest
 ```
 
 The smoke test drives the model layer in `src/model/`: it creates a vault, adds a service, a
