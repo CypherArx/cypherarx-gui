@@ -119,7 +119,7 @@ int run_selftest() {
         const auto imported = s.import_csv(csv);
         fs::remove(csv, ec);
         ok = expect(imported.has_value() && imported->services == 1 && imported->accounts == 1 &&
-                        imported->fields == 1,
+                        imported->fields == 2,
                     "import") &&
              ok;
 

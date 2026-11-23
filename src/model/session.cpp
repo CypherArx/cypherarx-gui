@@ -210,8 +210,13 @@ Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file) {
         return fail(text::err_unexpected);
     }
     const auto summary = vault_->import_logins(
-        *logins, {text::import_password_label, text::import_totp_label, text::import_password_type,
-                  text::import_totp_type});
+        *logins, {.password_label = text::import_password_label,
+                  .totp_label = text::import_totp_label,
+                  .password_type = text::import_password_type,
+                  .totp_type = text::import_totp_type,
+                  .email_label = text::import_email_label,
+                  .id_label = text::import_id_label,
+                  .identifier_type = text::import_identifier_type});
     if (!summary) {
         return fail(failure(text::import_csv, summary.error()).message);
     }

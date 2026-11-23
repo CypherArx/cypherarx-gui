@@ -173,7 +173,8 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
     an export). **Only the access log retention has an effect so far**; nothing locks the
     vault by itself yet, and the sheet says so.
   - *Import CSV*: reads a browser's or a password manager's CSV export into guarded memory
-    and adds one service per site and one account per row. Importing the same file again
+    and adds one service per site and one account per row, whose fields are the user name
+    (*Email* or *ID* by its shape), the password and the TOTP secret. Importing the same file again
     adds nothing. The result is shown with a reminder that the CSV still holds every
     password as plain text; the application does not delete the file. KeePass XML and
     1Password 1PUX are not read.

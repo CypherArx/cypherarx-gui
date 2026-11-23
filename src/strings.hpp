@@ -169,6 +169,9 @@ inline constexpr const char* import_password_label = "Password";
 inline constexpr const char* import_totp_label = "TOTP";
 inline constexpr const char* import_password_type = "password";
 inline constexpr const char* import_totp_type = "totp";
+inline constexpr const char* import_email_label = "Email";
+inline constexpr const char* import_id_label = "ID";
+inline constexpr const char* import_identifier_type = "text";
 
 inline constexpr const char* err_cannot_open_file = "Could not open the file.";
 inline constexpr const char* err_already_initialized = "A vault already exists at that path.";
