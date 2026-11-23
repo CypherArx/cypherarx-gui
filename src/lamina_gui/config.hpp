@@ -24,6 +24,8 @@ struct WindowConfig {
     int min_width_dp = 960;
     int min_height_dp = 620;
     bool client_title_bar = true;
+    double title_icon_size = 20.0;
+    double title_icon_gap = 10.0;
 };
 
 enum class PaneStyle { filled, outlined };

@@ -11,6 +11,8 @@
 #include <vector>
 
 #include "lamina/motion/animated.hpp"
+#include "lamina/render/image.hpp"
+#include "lamina/widgets/label.hpp"
 #include "lamina/widgets/title_bar.hpp"
 #include "lamina_sdl3/window.hpp"
 
@@ -78,6 +80,9 @@ private:
     std::size_t theme_index_;
     Kit kit_;
     lm::widgets::TitleBar title_bar_;
+    lm::render::Image app_icon_;
+    lm::widgets::Label window_title_;
+    Rect app_icon_rect_{0.0, 0.0, 0.0, 0.0};
     ColorScheme scheme_;
     ColorScheme scheme_from_;
     ColorScheme scheme_to_;

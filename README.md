@@ -81,6 +81,7 @@ src/lamina_gui/app.*             the three-pane window, input routing, the frame
 src/lamina_gui/main.cpp          entry point, --selftest
 
 resources/windows/app.{ico,rc}   the application icon, embedded in the executable on Windows
+resources/app-icon.argb          the same icon as pixels, drawn at the left of the title bar
 tools/app-icon/make_icon.py      draws that icon (Python 3 with Pillow)
 ```
 
@@ -89,14 +90,20 @@ of that kind is written inline in the drawing code. UI text lives in `strings.hp
 reason (and to make a later translation a single-file change).
 
 The application icon is a placeholder: a citadel wall with a keyhole on a black tile. It is
-drawn by a script, and `app.ico` is its committed output, so a build does not need Pillow.
+drawn by a script, and `app.ico` and `app-icon.argb` are its committed outputs, so a build
+does not need Pillow.
 The shapes and colours are the constants at the top of the script. To draw it again:
 
 ```
-python tools/app-icon/make_icon.py --ico resources/windows/app.ico
+python tools/app-icon/make_icon.py --ico resources/windows/app.ico --pixels resources/app-icon.argb
 ```
 
-The window and the taskbar take the icon from the executable, so there is no code for it.
+The taskbar takes the icon from the executable. The title bar is drawn by lamina-ui, whose
+title bar has no place for an icon, so the application leaves lamina-ui's title empty and
+draws the icon and the title itself over the bar. `app-icon.argb` is the width and the
+height as two little-endian 32-bit integers, then the pixels row by row as ARGB with
+straight alpha, which is what `lamina::render::Image` holds; it is embedded with
+`lamina_add_resources`. The icon's size and its gap to the title are in `WindowConfig`.
 
 ## What the GUI does today
 

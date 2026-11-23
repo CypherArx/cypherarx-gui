@@ -1,11 +1,13 @@
 import argparse
 import pathlib
+import struct
 
 from PIL import Image, ImageDraw
 
 CANVAS = 1024
 ICON_SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256]
 PREVIEW_SIZE = 256
+PIXELS_SIZE = 96
 
 TILE_COLOR = "#0b0d12"
 TILE_EDGE_COLOR = "#343a46"
@@ -79,6 +81,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ico", type=pathlib.Path, required=True)
     parser.add_argument("--preview", type=pathlib.Path)
+    parser.add_argument("--pixels", type=pathlib.Path)
     args = parser.parse_args()
 
     image = draw_icon()
@@ -88,6 +91,12 @@ def main():
     if args.preview:
         args.preview.parent.mkdir(parents=True, exist_ok=True)
         image.resize((PREVIEW_SIZE, PREVIEW_SIZE), Image.LANCZOS).save(args.preview)
+    if args.pixels:
+        small = image.resize((PIXELS_SIZE, PIXELS_SIZE), Image.LANCZOS)
+        args.pixels.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.pixels, "wb") as out:
+            out.write(struct.pack("<II", small.width, small.height))
+            out.write(small.tobytes("raw", "BGRA"))
 
 
 if __name__ == "__main__":

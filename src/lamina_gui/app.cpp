@@ -4,6 +4,8 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstring>
+#include <stdexcept>
 #include <optional>
 #include <string>
 #include <system_error>
@@ -88,6 +90,22 @@ std::optional<std::size_t> theme_with_id(const ThemeConfig& config, const std::s
     return std::nullopt;
 }
 
+lm::render::Image image_from(const lm::resources::Resource& resource) {
+    const std::size_t header = 2 * sizeof(std::uint32_t);
+    std::uint32_t size[2] = {0, 0};
+    if (resource.data.size() >= header) {
+        std::memcpy(size, resource.data.data(), header);
+    }
+    const std::size_t count = static_cast<std::size_t>(size[0]) * size[1];
+    if (count == 0 || resource.data.size() != header + count * sizeof(lm::color::Argb)) {
+        throw std::runtime_error(std::string(resource.name) + " is not an image");
+    }
+    lm::render::Image image{static_cast<int>(size[0]), static_cast<int>(size[1]),
+                            std::vector<lm::color::Argb>(count)};
+    std::memcpy(image.pixels.data(), resource.data.data() + header, count * sizeof(lm::color::Argb));
+    return image;
+}
+
 ColorScheme build_scheme(const ThemeConfig& config, const ThemePreset& theme) {
     return lm::color::spec_2025().build({config.seed, theme.dark, theme.variant, config.contrast});
 }
@@ -113,7 +131,11 @@ App::App()
       theme_index_(theme_with_id(cfg_.theme, preferences_.theme).value_or(cfg_.theme.initial)),
       kit_{lm::sdl3::system_font_stack(), lm::icons::IconFont::from_resource(res::fonts::symbols), &window_.clipboard(), &cfg_,
            &cfg_.theme.presets[theme_index_]},
-      title_bar_({cfg_.window.title, kit_.icons, nullptr, kit_.theme->background}, kit_.fonts),
+      title_bar_({"", kit_.icons, nullptr, kit_.theme->background}, kit_.fonts),
+      app_icon_(image_from(res::files::app_icon)),
+      window_title_({cfg_.window.title, lm::tokens::title_bar_tokens.title,
+                     lm::tokens::title_bar_tokens.title_color, false},
+                    kit_.fonts),
       scheme_(build_scheme(cfg_.theme, *kit_.theme)),
       scheme_from_(scheme_),
       scheme_to_(scheme_),
@@ -234,8 +256,7 @@ void App::apply_theme(std::size_t index) {
     scheme_to_ = build_scheme(cfg_.theme, theme);
     theme_mix_.snap_to(0.0);
     theme_mix_.animate_to(1.0);
-    title_bar_ = lm::widgets::TitleBar({cfg_.window.title, kit_.icons, nullptr, theme.background},
-                                       kit_.fonts);
+    title_bar_ = lm::widgets::TitleBar({"", kit_.icons, nullptr, theme.background}, kit_.fonts);
     new_.set_style(theme.vault_action);
     open_.set_style(theme.vault_action);
     add_entry_.set_style(theme.entry_action);
@@ -630,6 +651,12 @@ Argb App::update(const lm::sdl3::Frame& frame) {
         title_bar_.set_active(frame.active);
         title_bar_.set_width(frame.width_dp);
         title_bar_.set_origin({0.0, 0.0});
+        const double icon = cfg_.window.title_icon_size;
+        app_icon_rect_ = {lm::tokens::title_bar_tokens.leading_space, (bar - icon) / 2.0, icon, icon};
+        const double title_x = app_icon_rect_.x + icon + cfg_.window.title_icon_gap;
+        const Size title_size =
+            window_title_.measure({0.0, std::max(0.0, frame.width_dp - title_x), 0.0, bar});
+        window_title_.set_origin({title_x, (bar - title_size.height) / 2.0});
         window_.set_caption_regions(title_bar_.regions());
     }
     if (dirty_ || session_.revision() != seen_revision_) {
@@ -731,6 +758,8 @@ bool App::paint(Canvas& canvas) {
     }
     if (bar_height() > 0.0) {
         title_bar_.paint(canvas, scheme_);
+        canvas.draw_image(app_icon_, app_icon_rect_);
+        window_title_.paint(canvas, scheme_);
         animating = animating || title_bar_.animating();
     }
     return animating;

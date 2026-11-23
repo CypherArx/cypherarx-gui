@@ -82,6 +82,7 @@ src/lamina_gui/app.*             3 ペインのウィンドウ、入力の振り
 src/lamina_gui/main.cpp          入口、--selftest
 
 resources/windows/app.{ico,rc}   アプリケーションのアイコン（Windows では実行ファイルに埋め込む）
+resources/app-icon.argb          同じアイコンのピクセル。タイトルバーの左端に描く
 tools/app-icon/make_icon.py      そのアイコンを描くスクリプト（Python 3 と Pillow）
 ```
 
@@ -90,14 +91,21 @@ tools/app-icon/make_icon.py      そのアイコンを描くスクリプト（Py
 `strings.hpp` に置いています。
 
 アプリケーションのアイコンは仮のもので、黒い地の上に、鍵穴のある城壁を描いています。
-スクリプトで描き、その出力の `app.ico` をコミットしてあるので、ビルドに Pillow は要りません。
+スクリプトで描き、その出力の `app.ico` と `app-icon.argb` をコミットしてあるので、ビルドに
+Pillow は要りません。
 形と色は、スクリプトの先頭の定数です。描き直すには次を実行します。
 
 ```
-python tools/app-icon/make_icon.py --ico resources/windows/app.ico
+python tools/app-icon/make_icon.py --ico resources/windows/app.ico --pixels resources/app-icon.argb
 ```
 
-ウィンドウとタスクバーは実行ファイルからアイコンを取るので、そのためのコードはありません。
+タスクバーは実行ファイルからアイコンを取ります。タイトルバーは lamina-ui が描きますが、
+lamina-ui のタイトルバーにはアイコンを置く場所が無いので、アプリケーションは lamina-ui 側の
+タイトルを空にし、アイコンとタイトルを自分でバーの上に描きます。`app-icon.argb` は、幅と
+高さをリトルエンディアンの 32 ビット整数 2 つで置き、続けてピクセルを行ごとに ARGB
+（アルファは乗算なし）で並べたもので、`lamina::render::Image` が持つ形そのままです。
+`lamina_add_resources` で埋め込みます。アイコンの大きさとタイトルまでの間隔は
+`WindowConfig` にあります。
 
 ## 現時点でできること
 

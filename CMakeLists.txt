@@ -59,6 +59,8 @@ lamina_add_resources(cypherarx_gui_resources
     subdirectory_arrow_right
     timer
     visibility
+  FILES
+    app_icon=resources/app-icon.argb
 )
 
 add_executable(cypherarx_gui
