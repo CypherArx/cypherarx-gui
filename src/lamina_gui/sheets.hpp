@@ -127,6 +127,28 @@ private:
     ButtonC& ok_;
 };
 
+class MergeSheet final : public Sheet {
+public:
+    MergeSheet(const Kit& kit, Host& host);
+
+    void open();
+
+protected:
+    NodePtr body() override;
+
+private:
+    void submit();
+
+    Host& host_;
+    std::int64_t source_ = 0;
+    gui::IdLabels targets_;
+    LabelC& name_;
+    SelectField& target_;
+    LabelC& hint_;
+    ButtonC& cancel_;
+    ButtonC& ok_;
+};
+
 class EntrySheet final : public Sheet {
 public:
     EntrySheet(const Kit& kit, Host& host);

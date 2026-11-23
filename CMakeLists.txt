@@ -52,6 +52,7 @@ lamina_add_resources(cypherarx_gui_resources
     light_mode
     lock
     login
+    merge
     palette
     person
     public

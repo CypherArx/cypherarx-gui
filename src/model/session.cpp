@@ -175,6 +175,23 @@ std::optional<Status> Session::poll_rotate() {
     return Status{};
 }
 
+Status Session::merge_service(std::int64_t source, std::int64_t target) {
+    if (!vault_) {
+        return fail(text::no_vault);
+    }
+    const auto merged = vault_->merge_service(source, target);
+    if (!merged) {
+        return fail(failure(text::merge_service, merged.error()).message);
+    }
+    selected_entry_ = target;
+    selected_field_.reset();
+    reload_entries();
+    reload_fields();
+    status_ = text::services_merged;
+    touch();
+    return {};
+}
+
 Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file,
                                            std::optional<std::int64_t> persona) {
     if (!vault_) {

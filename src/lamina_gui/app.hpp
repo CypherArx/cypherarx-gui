@@ -128,6 +128,7 @@ private:
     LoginSheet login_sheet_;
     SettingsSheet settings_sheet_;
     ImportSheet import_sheet_;
+    MergeSheet merge_sheet_;
 
     std::vector<Modal*> modals_;
     std::vector<std::unique_ptr<Modal>> owned_;

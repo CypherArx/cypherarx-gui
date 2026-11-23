@@ -125,6 +125,10 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   number of them, and none for something with no site. A service without a name is shown by
   its first URL, in the tree, in the other axis's column and in the selection lists, and the
   search looks at that URL too. The field types an entry takes are `Session::field_types`.
+- Merging services: a service's row has a *Merge Into Another Service* action. It asks which
+  service to merge into; that one keeps its name, takes this one's accounts and URLs, and
+  this one is removed. It is for services that turned out to be the same, such as one made
+  by hand and one made by an import.
 - The sidebar picks one place at a time: all items, the favorites, one category (with its
   sub-categories) or one tag, so only one of its rows is ever highlighted. Search (label /
   display name / URL, ASCII case-insensitive) narrows that further. Matching entries keep their

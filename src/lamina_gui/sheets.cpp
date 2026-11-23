@@ -289,6 +289,57 @@ void ImportSheet::submit() {
     }
 }
 
+MergeSheet::MergeSheet(const Kit& kit, Host& host)
+    : Sheet(kit, str::merge_service, kit.cfg->sheet.form_width),
+      host_(host),
+      name_(panel_.add<LabelC>(kit, file_name(kit))),
+      target_(panel_.add<SelectField>(kit, str::merge_into, &ThemePreset::sheet)),
+      hint_(panel_.add<LabelC>(kit, muted(str::merge_hint, true))),
+      cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
+      ok_(panel_.add<ButtonC>(kit, ButtonSpec{str::merge_action, ButtonStyle::filled})) {
+    ok_.on_click = [this] { submit(); };
+    on_submit = [this] { submit(); };
+    on_cancel = [this] { close(); };
+    cancel_.on_click = on_cancel;
+}
+
+NodePtr MergeSheet::body() {
+    return vcol(kit_, {name_.node(), target_.node(), hint_.node(),
+                       hrow(kit_, {lm::layout::flexible_space(), cancel_.node(), ok_.node()})});
+}
+
+void MergeSheet::open() {
+    gui::Session& session = host_.session();
+    const cypherarx::Entry* source = session.selected_entry();
+    if (!source || source->entry_type != "service") {
+        host_.message(str::select_entry_first);
+        return;
+    }
+    source_ = source->id;
+    targets_.clear();
+    for (auto& choice : session.entry_choices().services) {
+        if (choice.first != source_) {
+            targets_.push_back(std::move(choice));
+        }
+    }
+    if (targets_.empty()) {
+        host_.message(str::merge_no_other);
+        return;
+    }
+    name_.set_text(session.entry_title(*source));
+    target_.set_items(labels(targets_));
+    show();
+    panel_.focus(target_);
+    host_.present(*this);
+}
+
+void MergeSheet::submit() {
+    const std::int64_t target = id_at(targets_, target_.index());
+    if (target != 0 && host_.check(host_.session().merge_service(source_, target))) {
+        close();
+    }
+}
+
 EntrySheet::EntrySheet(const Kit& kit, Host& host)
     : Sheet(kit, str::add_entry, kit.cfg->sheet.form_width),
       host_(host),

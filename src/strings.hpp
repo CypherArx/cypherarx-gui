@@ -28,6 +28,14 @@ inline constexpr const char* col_persona = "Persona";
 inline constexpr const char* add_entry = "Add Entry";
 inline constexpr const char* edit_entry = "Edit Entry";
 inline constexpr const char* delete_entry = "Delete Entry";
+inline constexpr const char* merge_service = "Merge Into Another Service";
+inline constexpr const char* merge_into = "Merge into";
+inline constexpr const char* merge_action = "Merge";
+inline constexpr const char* merge_hint =
+    "The accounts and the URLs of this service move to the chosen one, which keeps its own name, and this "
+    "service is removed.";
+inline constexpr const char* merge_no_other = "There is no other service to merge into.";
+inline constexpr const char* services_merged = "The services were merged.";
 inline constexpr const char* login_methods = "Login Methods";
 inline constexpr const char* add_field = "Add Field";
 inline constexpr const char* edit_field = "Edit Field";

@@ -159,6 +159,7 @@ public:
     Outcome<EntryDraft> selected_entry_draft();
     Status commit_entry(EntryDraft& draft);
     Status delete_selected_entry();
+    Status merge_service(std::int64_t source, std::int64_t target);
 
     Outcome<std::int64_t> add_category(const std::string& name, std::optional<std::int64_t> parent);
     Status update_category(std::int64_t id, const std::string& name,

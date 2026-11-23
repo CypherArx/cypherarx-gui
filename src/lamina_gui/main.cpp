@@ -145,6 +145,18 @@ int run_selftest() {
                     "the imported account has the chosen persona") &&
              ok;
 
+        const std::int64_t twin = add_entry(s, "service", "twin");
+        const std::int64_t moved = add_entry(s, "account", "moved", twin, 0);
+        ok = expect(twin != 0 && moved != 0 && s.merge_service(twin, service).has_value() &&
+                        std::none_of(s.entries().begin(), s.entries().end(),
+                                     [&](const cypherarx::Entry& e) { return e.id == twin; }) &&
+                        std::any_of(s.entries().begin(), s.entries().end(),
+                                    [&](const cypherarx::Entry& e) {
+                                        return e.id == moved && e.parent_id == service;
+                                    }),
+                    "merging a service moves its accounts") &&
+             ok;
+
         const std::int64_t alpha = add_entry(s, "service", "alpha");
         add_entry(s, "account", "z", alpha, persona);
         s.set_axis(gui::Axis::Persona);

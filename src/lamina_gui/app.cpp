@@ -36,7 +36,7 @@ constexpr gui::Scope::Kind kind_of(int group) {
     return static_cast<gui::Scope::Kind>(group - 1);
 }
 
-enum EntryAction : std::size_t { entry_login, entry_edit, entry_delete };
+enum EntryAction : std::size_t { entry_login, entry_merge, entry_edit, entry_delete };
 
 enum FieldAction : std::size_t { field_copy, field_totp, field_edit, field_delete };
 
@@ -163,6 +163,7 @@ App::App()
                             .tree = true,
                             .select_follows_cursor = true,
                             .row_actions = {{cfg_.icons.login_methods, str::login_methods},
+                                            {cfg_.icons.merge_service, str::merge_service},
                                             {cfg_.icons.edit, str::edit_entry},
                                             {cfg_.icons.remove, str::delete_entry}}})),
       title_(base_.add<LabelC>(kit_, LabelSpec{str::fields, TypeRole::title_large})),
@@ -186,7 +187,8 @@ App::App()
       organize_sheet_(kit_, *this),
       login_sheet_(kit_, *this),
       settings_sheet_(kit_, *this),
-      import_sheet_(kit_, *this) {
+      import_sheet_(kit_, *this),
+      merge_sheet_(kit_, *this) {
     window_.set_minimum_size(cfg_.window.min_width_dp,
                              cfg_.window.min_height_dp + title_bar_extra(cfg_.window));
     wire();
@@ -413,6 +415,9 @@ void App::wire() {
         case entry_login:
             login_sheet_.open();
             break;
+        case entry_merge:
+            merge_sheet_.open();
+            break;
         case entry_edit:
             entry_sheet_.open_selected();
             break;
@@ -572,7 +577,10 @@ void App::sync_tree() {
             row.icon = cfg_.icons.favorite;
         }
         if (e->entry_type != "account") {
-            row.actions = without(entry_login);
+            row.actions &= without(entry_login);
+        }
+        if (e->entry_type != "service") {
+            row.actions &= without(entry_merge);
         }
         const bool open = row.expanded;
         rows.push_back(std::move(row));
