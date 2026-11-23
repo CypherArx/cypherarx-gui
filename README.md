@@ -116,7 +116,10 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   each axis and a search box, and the **fields** pane for the selected entry.
 - Entry tree with two views of the same data: **Service axis** (tree by `parent_id`) and
   **Persona axis** (tree by `persona_id`). An account appears in both; the third column shows
-  its parent on the other axis. See the design canon, §10.1.1.
+  its parent on the other axis. See the design canon, §10.1.1. On the persona axis the
+  accounts under a persona, and the accounts without one, are ordered by their service and
+  then by their own name, so the accounts of one service stay together; the service axis
+  keeps the order of creation.
 - The sidebar picks one place at a time: all items, the favorites, one category (with its
   sub-categories) or one tag, so only one of its rows is ever highlighted. Search (label /
   display name / URL, ASCII case-insensitive) narrows that further. Matching entries keep their

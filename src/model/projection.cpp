@@ -1,6 +1,8 @@
 #include "model/projection.hpp"
 
+#include <algorithm>
 #include <cctype>
+#include <tuple>
 
 namespace cypherarx::gui {
 
@@ -38,6 +40,45 @@ bool contains_ci(std::string_view haystack, std::string_view needle) {
         }
     }
     return false;
+}
+
+namespace {
+
+using SiblingKey = std::tuple<int, std::string, std::int64_t, std::string>;
+
+std::string lowered(std::string_view text) {
+    std::string out(text);
+    for (char& c : out) {
+        const auto u = static_cast<unsigned char>(c);
+        if (u < 0x80) {
+            c = static_cast<char>(std::tolower(u));
+        }
+    }
+    return out;
+}
+
+void group_accounts_by_cross_parent(Projection& p, Axis axis) {
+    std::unordered_map<std::int64_t, SiblingKey> keys;
+    const auto key_of = [&](std::int64_t id) -> const SiblingKey& {
+        const auto found = keys.find(id);
+        if (found != keys.end()) {
+            return found->second;
+        }
+        SiblingKey key{0, {}, 0, {}};
+        const Entry* e = p.find(id);
+        if (e && e->entry_type == "account") {
+            const auto cross = p.cross_parent(*e, axis);
+            key = {1, lowered(p.label_of(cross)), cross.value_or(0), lowered(e->label)};
+        }
+        return keys.emplace(id, std::move(key)).first->second;
+    };
+    const auto before = [&](std::int64_t a, std::int64_t b) { return key_of(a) < key_of(b); };
+    std::stable_sort(p.roots.begin(), p.roots.end(), before);
+    for (auto& [parent, list] : p.children) {
+        std::stable_sort(list.begin(), list.end(), before);
+    }
+}
+
 }
 
 Projection Projection::build(const std::vector<Entry>& entries, Axis axis,
@@ -93,6 +134,9 @@ Projection Projection::build(const std::vector<Entry>& entries, Axis axis,
         } else {
             p.roots.push_back(e.id);
         }
+    }
+    if (axis == Axis::Persona) {
+        group_accounts_by_cross_parent(p, axis);
     }
     return p;
 }

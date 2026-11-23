@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -129,6 +130,28 @@ int run_selftest() {
                                 }),
                     "the imported account has the chosen persona") &&
              ok;
+
+        const std::int64_t alpha = add_entry(s, "service", "alpha");
+        add_entry(s, "account", "z", alpha, persona);
+        s.set_axis(gui::Axis::Persona);
+        {
+            std::vector<std::string> services;
+            const auto under = s.projection().children.find(persona);
+            if (under != s.projection().children.end()) {
+                for (const std::int64_t id : under->second) {
+                    std::string label = s.projection().label_of(s.projection().find(id)->parent_id);
+                    std::transform(label.begin(), label.end(), label.begin(), [](unsigned char c) {
+                        return static_cast<char>(std::tolower(c));
+                    });
+                    services.push_back(std::move(label));
+                }
+            }
+            ok = expect(services.size() == 4 && services.front() == "alpha" &&
+                            std::is_sorted(services.begin(), services.end()),
+                        "accounts on the persona axis are grouped by service") &&
+                 ok;
+        }
+        s.set_axis(gui::Axis::Service);
 
         s.start_rotate(pw);
         std::optional<gui::Status> rotated;
