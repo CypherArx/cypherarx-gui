@@ -137,6 +137,8 @@ private:
     std::vector<Modal*> modals_;
     std::vector<std::unique_ptr<Modal>> owned_;
     std::unordered_set<std::int64_t> collapsed_;
+    std::unordered_set<std::int64_t> expanded_;
+    std::optional<std::int64_t> revealed_;
     NodePtr root_;
     Rect window_rect_{0.0, 0.0, 0.0, 0.0};
     Size frame_size_{0.0, 0.0};

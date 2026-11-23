@@ -127,7 +127,10 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   its parent on the other axis. See the design canon, §10.1.1. On the persona axis the
   accounts under a persona, and the accounts without one, are ordered by their service and
   then by their own name, so the accounts of one service stay together; the service axis
-  keeps the order of creation.
+  keeps the order of creation. The tree starts with every row closed. Opening and closing is
+  remembered until the vault is closed, and the rows above a newly selected entry open so
+  that it can be seen. While the search or a place in the sidebar narrows the tree, the rows
+  that are left are shown open instead, since what was looked for is inside them.
 - A service's name, its URLs and its login URL are separate. The name is optional. The URLs
   are fields of the type `url` on the service (a service takes no other kind of field), any
   number of them, and none for something with no site. A service without a name is shown by

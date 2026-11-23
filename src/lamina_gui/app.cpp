@@ -456,8 +456,10 @@ void App::wire() {
     set_persona_.on_click = [this] { open_persona_menu(); };
     tick_all_.on_change = [this](bool) { session_.mark_all(!session_.all_marked()); };
     tree_.on_toggle = [this](const ListRow& row) {
-        if (!collapsed_.erase(row.id)) {
-            collapsed_.insert(row.id);
+        std::unordered_set<std::int64_t>& toggled =
+            session_.projection().filtered ? collapsed_ : expanded_;
+        if (!toggled.erase(row.id)) {
+            toggled.insert(row.id);
         }
         dirty_ = true;
     };
@@ -610,6 +612,23 @@ void App::sync_sidebar() {
 void App::sync_tree() {
     const gui::Projection& p = session_.projection();
     const Entry* selected = session_.selected_entry();
+    if (!session_.has_vault()) {
+        collapsed_.clear();
+        expanded_.clear();
+        revealed_.reset();
+    }
+    const std::optional<std::int64_t> current = selected ? std::optional(selected->id) : std::nullopt;
+    if (current != revealed_) {
+        revealed_ = current;
+        for (const Entry* e = selected; e;) {
+            const auto parent = gui::tree_parent(*e, session_.axis());
+            e = parent ? p.find(*parent) : nullptr;
+            if (e) {
+                expanded_.insert(e->id);
+                collapsed_.erase(e->id);
+            }
+        }
+    }
     std::vector<ListRow> rows;
     std::function<void(std::int64_t, int)> add = [&](std::int64_t id, int depth) {
         const Entry* e = p.find(id);
@@ -626,7 +645,7 @@ void App::sync_tree() {
         row.cells = {e->entry_type,
                      titled_by_cross ? std::string() : p.label_of(p.cross_parent(*e, session_.axis()))};
         row.expandable = has_kids;
-        row.expanded = !collapsed_.contains(id);
+        row.expanded = p.filtered ? !collapsed_.contains(id) : expanded_.contains(id);
         row.dim = !p.is_match(id);
         row.selected = selected && selected->id == id;
         if (e->entry_type == "account") {

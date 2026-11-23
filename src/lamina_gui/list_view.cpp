@@ -157,7 +157,7 @@ double ListView::text_left(const ListRow& row) const {
     if (boxed) {
         x += t.check_size + t.icon_gap;
     }
-    if (row.icon || (options_.tree && !boxed)) {
+    if (options_.tree || row.icon) {
         x += t.icon_size + t.icon_gap;
     }
     return x;
