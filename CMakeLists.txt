@@ -72,6 +72,9 @@ add_executable(cypherarx_gui
   src/lamina_gui/sheets.cpp
   src/platform/file_dialog_win32.cpp
 )
+if(WIN32)
+  target_sources(cypherarx_gui PRIVATE resources/windows/app.rc)
+endif()
 target_link_libraries(cypherarx_gui PRIVATE
   cypherarx_gui_model
   cypherarx_gui_resources

@@ -79,11 +79,24 @@ src/lamina_gui/sheet.*           modal sheets with form content, and lamina-ui d
 src/lamina_gui/sheets.*          the password, entry, field, organize and login-method sheets
 src/lamina_gui/app.*             the three-pane window, input routing, the frame loop
 src/lamina_gui/main.cpp          entry point, --selftest
+
+resources/windows/app.{ico,rc}   the application icon, embedded in the executable on Windows
+tools/app-icon/make_icon.py      draws that icon (Python 3 with Pillow)
 ```
 
 Colours, sizes, the clipboard timeout and the Argon2id preset are all in `config.hpp`; nothing
 of that kind is written inline in the drawing code. UI text lives in `strings.hpp` for the same
 reason (and to make a later translation a single-file change).
+
+The application icon is a placeholder: a citadel wall with a keyhole on a black tile. It is
+drawn by a script, and `app.ico` is its committed output, so a build does not need Pillow.
+The shapes and colours are the constants at the top of the script. To draw it again:
+
+```
+python tools/app-icon/make_icon.py --ico resources/windows/app.ico
+```
+
+The window and the taskbar take the icon from the executable, so there is no code for it.
 
 ## What the GUI does today
 

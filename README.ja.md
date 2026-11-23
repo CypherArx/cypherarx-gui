@@ -80,11 +80,24 @@ src/lamina_gui/sheet.*           フォームを載せるモーダルのシー�
 src/lamina_gui/sheets.*          パスワード・エントリ・フィールド・整理・ログイン方法の各シート
 src/lamina_gui/app.*             3 ペインのウィンドウ、入力の振り分け、フレームの繰り返し
 src/lamina_gui/main.cpp          入口、--selftest
+
+resources/windows/app.{ico,rc}   アプリケーションのアイコン（Windows では実行ファイルに埋め込む）
+tools/app-icon/make_icon.py      そのアイコンを描くスクリプト（Python 3 と Pillow）
 ```
 
 配色・寸法・クリップボードの消去時間・Argon2id プリセットはすべて `config.hpp` にあり、描画コードの
 中に直接は書きません。UI 文言も同じ理由（と、後で翻訳するときに 1 ファイルで済むように）で
 `strings.hpp` に置いています。
+
+アプリケーションのアイコンは仮のもので、黒い地の上に、鍵穴のある城壁を描いています。
+スクリプトで描き、その出力の `app.ico` をコミットしてあるので、ビルドに Pillow は要りません。
+形と色は、スクリプトの先頭の定数です。描き直すには次を実行します。
+
+```
+python tools/app-icon/make_icon.py --ico resources/windows/app.ico
+```
+
+ウィンドウとタスクバーは実行ファイルからアイコンを取るので、そのためのコードはありません。
 
 ## 現時点でできること
 
