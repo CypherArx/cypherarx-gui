@@ -187,7 +187,7 @@ private:
 
 class IconButtonC final : public Control {
 public:
-    IconButtonC(const Kit& kit, lm::icons::Symbol symbol, bool toggleable, std::string tooltip = {});
+    IconButtonC(const Kit& kit, lm::icons::Symbol symbol, bool toggleable, std::string name);
 
     std::function<void()> on_click;
     std::function<void(bool)> on_change;

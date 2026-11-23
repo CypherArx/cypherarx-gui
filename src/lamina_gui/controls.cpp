@@ -331,11 +331,12 @@ bool ButtonC::handle(const KeyEvent& e) {
 }
 
 IconButtonC::IconButtonC(const Kit& kit, lm::icons::Symbol symbol, bool toggleable,
-                         std::string tooltip)
+                         std::string name)
     : kit_(kit),
-      w_(lm::widgets::IconButtonOptions{.icon = {kit.icons, symbol}, .toggleable = toggleable}),
-      tip_(line_of(kit, tooltip, kit.cfg->tooltip.type)),
-      has_tip_(!tooltip.empty()) {}
+      w_(lm::widgets::IconButtonOptions{
+          .icon = {kit.icons, symbol}, .accessible_name = name, .toggleable = toggleable}),
+      tip_(line_of(kit, name, kit.cfg->tooltip.type)),
+      has_tip_(!name.empty()) {}
 
 Size IconButtonC::measure(const Constraints&) {
     return {w_.width(), w_.height()};

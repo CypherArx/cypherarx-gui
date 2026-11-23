@@ -330,7 +330,7 @@ FieldSheet::FieldSheet(const Kit& kit, Host& host)
       type_(panel_.add<SelectField>(kit, str::type, &ThemePreset::sheet)),
       value_(panel_.add<SecretField>(kit, str::value, kit.cfg->limits.value_buffer,
                                      &ThemePreset::sheet)),
-      show_(panel_.add<IconButtonC>(kit, kit.cfg->icons.show, true)),
+      show_(panel_.add<IconButtonC>(kit, kit.cfg->icons.show, true, str::show)),
       generate_(panel_.add<ButtonC>(kit, ButtonSpec{str::generate, ButtonStyle::tonal})),
       notes_(panel_.add<TextFieldC>(kit, str::notes)),
       cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
