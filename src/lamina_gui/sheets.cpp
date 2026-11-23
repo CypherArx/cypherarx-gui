@@ -77,6 +77,20 @@ LabelSpec muted(std::string text, bool wrap = false) {
     return {std::move(text), TypeRole::body_medium, Role::on_surface_variant, wrap};
 }
 
+LabelSpec file_name(const Kit& kit) {
+    return {"", kit.cfg->sheet.file_name, kit.cfg->sheet.file_name_color, false};
+}
+
+LabelSpec file_folder(const Kit& kit) {
+    return {"", kit.cfg->sheet.file_folder, kit.cfg->sheet.file_folder_color, false};
+}
+
+void show_file(LabelC& name, LabelC& folder, const std::filesystem::path& file) {
+    const gui::PathParts parts = gui::path_parts(file);
+    name.set_text(parts.name);
+    folder.set_text(parts.folder);
+}
+
 LabelSpec heading(std::string text) {
     return {std::move(text), TypeRole::title_small, Role::on_surface_variant, false};
 }
@@ -86,7 +100,8 @@ LabelSpec heading(std::string text) {
 PasswordSheet::PasswordSheet(const Kit& kit, Host& host)
     : Sheet(kit, str::open_vault, kit.cfg->sheet.password_width),
       host_(host),
-      path_(panel_.add<LabelC>(kit, muted(""))),
+      name_(panel_.add<LabelC>(kit, file_name(kit))),
+      folder_(panel_.add<LabelC>(kit, file_folder(kit))),
       password_(panel_.add<SecretField>(kit, str::master_password, kit.cfg->limits.password_buffer,
                                         &ThemePreset::sheet)),
       cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
@@ -102,7 +117,7 @@ PasswordSheet::PasswordSheet(const Kit& kit, Host& host)
 }
 
 NodePtr PasswordSheet::body() {
-    return vcol(kit_, {path_.node(), password_.node(),
+    return vcol(kit_, {name_.node(), folder_.node(), password_.node(),
                        hrow(kit_, {lm::layout::flexible_space(), cancel_.node(), ok_.node()})});
 }
 
@@ -110,7 +125,7 @@ void PasswordSheet::open(gui::UnlockMode mode, std::filesystem::path file) {
     mode_ = mode;
     file_ = std::move(file);
     set_title(mode == gui::UnlockMode::Create ? str::new_vault : str::open_vault);
-    path_.set_text(gui::path_utf8(file_));
+    show_file(name_, folder_, file_);
     password_.clear();
     password_.set_masked(true);
     show();
@@ -133,17 +148,18 @@ void PasswordSheet::submit() {
 
 BusySheet::BusySheet(const Kit& kit)
     : Sheet(kit, str::open_vault, kit.cfg->sheet.password_width),
-      path_(panel_.add<LabelC>(kit, muted(""))),
+      name_(panel_.add<LabelC>(kit, file_name(kit))),
+      folder_(panel_.add<LabelC>(kit, file_folder(kit))),
       spinner_(panel_.add<SpinnerC>(kit)),
       note_(panel_.add<LabelC>(kit, LabelSpec{str::unlocking, TypeRole::body_large})) {}
 
 NodePtr BusySheet::body() {
-    return vcol(kit_, {path_.node(), hrow(kit_, {spinner_.node(), note_.node()})});
+    return vcol(kit_, {name_.node(), folder_.node(), hrow(kit_, {spinner_.node(), note_.node()})});
 }
 
-void BusySheet::open(const std::string& title, const std::string& path) {
+void BusySheet::open(const std::string& title, const std::filesystem::path& file) {
     set_title(title);
-    path_.set_text(path);
+    show_file(name_, folder_, file);
     show();
 }
 

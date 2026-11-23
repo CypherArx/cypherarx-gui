@@ -108,6 +108,9 @@ int run_selftest() {
     }
     fs::remove(path, ec);
 
+    const gui::PathParts parts = gui::path_parts(gui::path_from_utf8("C:\\vaults\\home.cax"));
+    ok = expect(parts.name == "home.cax" && parts.folder == "C:\\vaults", "path parts") && ok;
+
     const fs::path prefs =
         fs::temp_directory_path() / "cypherarx_gui_selftest_preferences" / "preferences.conf";
     fs::remove_all(prefs.parent_path(), ec);

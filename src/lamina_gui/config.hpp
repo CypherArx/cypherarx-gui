@@ -177,6 +177,10 @@ struct SheetConfig {
     double login_width = 640.0;
     double list_height = 196.0;
     lamina::tokens::TypeRole title = lamina::tokens::TypeRole::headline_small;
+    lamina::tokens::TypeRole file_name = lamina::tokens::TypeRole::title_medium;
+    lamina::color::Role file_name_color = lamina::color::Role::on_surface;
+    lamina::tokens::TypeRole file_folder = lamina::tokens::TypeRole::body_medium;
+    lamina::color::Role file_folder_color = lamina::color::Role::on_surface_variant;
 };
 
 struct TotpConfig {

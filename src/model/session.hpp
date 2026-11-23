@@ -221,4 +221,11 @@ const char* vault_error_text(VaultError e);
 std::string path_utf8(const std::filesystem::path& p);
 std::filesystem::path path_from_utf8(const std::string& utf8);
 
+struct PathParts {
+    std::string name;
+    std::string folder;
+};
+
+PathParts path_parts(const std::filesystem::path& p);
+
 } // namespace cypherarx::gui

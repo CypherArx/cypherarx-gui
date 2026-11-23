@@ -50,7 +50,8 @@ private:
     Host& host_;
     gui::UnlockMode mode_ = gui::UnlockMode::Open;
     std::filesystem::path file_;
-    LabelC& path_;
+    LabelC& name_;
+    LabelC& folder_;
     SecretField& password_;
     ButtonC& cancel_;
     ButtonC& ok_;
@@ -60,13 +61,14 @@ class BusySheet final : public Sheet {
 public:
     explicit BusySheet(const Kit& kit);
 
-    void open(const std::string& title, const std::string& path);
+    void open(const std::string& title, const std::filesystem::path& file);
 
 protected:
     NodePtr body() override;
 
 private:
-    LabelC& path_;
+    LabelC& name_;
+    LabelC& folder_;
     SpinnerC& spinner_;
     LabelC& note_;
 };

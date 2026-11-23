@@ -302,7 +302,7 @@ void App::wire() {
     password_sheet_.on_started = [this] {
         busy_sheet_.open(session_.unlock_mode() == gui::UnlockMode::Create ? str::new_vault
                                                                            : str::open_vault,
-                         session_.unlock_path());
+                         gui::path_from_utf8(session_.unlock_path()));
         present(busy_sheet_);
     };
 

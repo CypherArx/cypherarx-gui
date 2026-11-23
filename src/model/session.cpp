@@ -71,6 +71,13 @@ std::filesystem::path path_from_utf8(const std::string& utf8) {
     return std::filesystem::path(std::u8string(utf8.begin(), utf8.end()));
 }
 
+PathParts path_parts(const std::filesystem::path& p) {
+    if (!p.has_filename()) {
+        return {path_utf8(p), {}};
+    }
+    return {path_utf8(p.filename()), path_utf8(p.parent_path())};
+}
+
 Session::Session(SessionSettings settings) : settings_(settings), status_(text::no_vault) {}
 
 void Session::report(std::string text) {
