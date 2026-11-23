@@ -193,13 +193,16 @@ int run_selftest() {
             return std::optional<std::int64_t>(-1);
         };
         s.clear_marks();
-        s.select_entry(account);
-        const std::vector<std::int64_t> more{moved};
-        s.mark_entries(more, false);
+        s.toggle_mark(account);
+        s.toggle_mark(moved);
+        s.toggle_mark(service);
         ok = expect(s.marked().size() == 2 && s.set_persona_of_marked(std::nullopt).has_value() &&
                         !persona_of(account).has_value() && !persona_of(moved).has_value(),
                     "clearing the persona of the marked accounts") &&
              ok;
+        ok = expect(s.marked().empty(), "the ticks are cleared after the change") && ok;
+        s.toggle_mark(account);
+        s.toggle_mark(moved);
         ok = expect(s.set_persona_of_marked(persona).has_value() && persona_of(account) == persona &&
                         persona_of(moved) == persona,
                     "setting the persona of the marked accounts") &&

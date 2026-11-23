@@ -609,19 +609,13 @@ void Session::select_entry(std::optional<std::int64_t> id) {
     reload_fields();
 }
 
-void Session::mark_entries(std::span<const std::int64_t> ids, bool toggle) {
-    if (marked_.empty() && selected_entry_) {
-        marked_.insert(*selected_entry_);
+void Session::toggle_mark(std::int64_t id) {
+    const Entry* e = proj_.find(id);
+    if (!e || e->entry_type != "account") {
+        return;
     }
-    for (const std::int64_t id : ids) {
-        if (!proj_.find(id)) {
-            continue;
-        }
-        if (toggle && marked_.contains(id)) {
-            marked_.erase(id);
-        } else {
-            marked_.insert(id);
-        }
+    if (!marked_.erase(id)) {
+        marked_.insert(id);
     }
     status_ = format(text::marked_fmt, marked_.size());
     touch();
@@ -642,12 +636,6 @@ std::vector<std::int64_t> Session::marked_accounts() const {
             out.push_back(id);
         }
     };
-    if (marked_.empty()) {
-        if (selected_entry_) {
-            take(*selected_entry_);
-        }
-        return out;
-    }
     for (const Entry& e : entries_) {
         if (marked_.contains(e.id)) {
             take(e.id);
@@ -668,6 +656,7 @@ Status Session::set_persona_of_marked(std::optional<std::int64_t> persona) {
     if (!set) {
         return fail(failure(text::set_persona, set.error()).message);
     }
+    marked_.clear();
     reload_entries();
     status_ = format(text::persona_set_fmt, accounts.size());
     touch();

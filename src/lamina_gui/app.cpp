@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <stdexcept>
 #include <optional>
@@ -163,7 +164,7 @@ App::App()
           kit_, ListOptions{.columns = {{str::col_name, str::col_type, str::col_persona}, {2.0, 1.0, 1.0}},
                             .tree = true,
                             .select_follows_cursor = true,
-                            .multi = true,
+                            .checks = true,
                             .row_actions = {{cfg_.icons.login_methods, str::login_methods},
                                             {cfg_.icons.merge_service, str::merge_service},
                                             {cfg_.icons.edit, str::edit_entry},
@@ -342,7 +343,12 @@ void App::open_persona_menu() {
             return;
         }
         const std::int64_t id = personas[index].first;
-        check(session_.set_persona_of_marked(id != 0 ? std::optional<std::int64_t>(id) : std::nullopt));
+        const std::size_t count = session_.marked_accounts().size();
+        char text[256];
+        std::snprintf(text, sizeof text, str::confirm_set_persona_fmt, count, personas[index].second.c_str());
+        confirm(text, [this, id] {
+            check(session_.set_persona_of_marked(id != 0 ? std::optional<std::int64_t>(id) : std::nullopt));
+        });
     });
     menu->show(set_persona_.bounds(), frame_size_);
     present(*menu);
@@ -444,17 +450,8 @@ void App::wire() {
         session_.set_axis(index == 0 ? gui::Axis::Service : gui::Axis::Persona);
     };
     search_.on_change = [this](const std::string& query) { session_.set_query(query); };
-    tree_.on_select = [this](const ListRow& row) {
-        session_.clear_marks();
-        session_.select_entry(row.id);
-    };
-    tree_.on_mark = [this](const std::vector<ListRow>& rows, bool toggle) {
-        std::vector<std::int64_t> ids;
-        for (const ListRow& row : rows) {
-            ids.push_back(row.id);
-        }
-        session_.mark_entries(ids, toggle);
-    };
+    tree_.on_select = [this](const ListRow& row) { session_.select_entry(row.id); };
+    tree_.on_check = [this](const ListRow& row) { session_.toggle_mark(row.id); };
     set_persona_.on_click = [this] { open_persona_menu(); };
     tree_.on_toggle = [this](const ListRow& row) {
         if (!collapsed_.erase(row.id)) {
@@ -629,8 +626,10 @@ void App::sync_tree() {
         row.expandable = has_kids;
         row.expanded = !collapsed_.contains(id);
         row.dim = !p.is_match(id);
-        row.selected = session_.marked().empty() ? selected && selected->id == id
-                                                 : session_.marked().contains(id);
+        row.selected = selected && selected->id == id;
+        if (e->entry_type == "account") {
+            row.check = session_.marked().contains(id);
+        }
         if (e->is_favorite) {
             row.icon = cfg_.icons.favorite;
         }

@@ -141,12 +141,22 @@ double ListView::column_width(std::size_t column) const {
     return std::max(0.0, inner * w[column] / total - gap);
 }
 
-double ListView::text_left(const ListRow& row) const {
+double ListView::check_left(const ListRow& row) const {
     const ListConfig& t = kit_.cfg->list;
     double x = t.padding + static_cast<double>(row.depth) * t.indent;
     if (options_.tree) {
-        x += t.chevron_size + t.icon_gap + t.icon_size + t.icon_gap;
-    } else if (row.icon) {
+        x += t.chevron_size + t.icon_gap;
+    }
+    return x;
+}
+
+double ListView::text_left(const ListRow& row) const {
+    const ListConfig& t = kit_.cfg->list;
+    double x = check_left(row);
+    if (options_.checks) {
+        x += t.check_size + t.icon_gap;
+    }
+    if (options_.tree || row.icon) {
         x += t.icon_size + t.icon_gap;
     }
     return x;
@@ -203,31 +213,13 @@ void ListView::click(std::size_t index, double content_x, int clicks) {
         }
         return;
     }
-    if (options_.multi && on_mark && (press_ctrl_ || press_shift_) && clicks < 2) {
-        std::optional<std::size_t> from;
-        if (press_shift_ && anchor_) {
-            for (std::size_t i = 0; i < rows_.size(); ++i) {
-                if (rows_[i].group == anchor_->first && rows_[i].id == anchor_->second) {
-                    from = i;
-                    break;
-                }
-            }
+    if (options_.checks && row.check && on_check) {
+        const double box = check_left(row);
+        if (content_x >= box - t.icon_gap / 2.0 && content_x < box + t.check_size + t.icon_gap / 2.0) {
+            on_check(row);
+            return;
         }
-        std::vector<ListRow> picked;
-        if (from) {
-            for (std::size_t i = std::min(*from, index); i <= std::max(*from, index); ++i) {
-                if (!rows_[i].section) {
-                    picked.push_back(rows_[i]);
-                }
-            }
-        } else {
-            picked.push_back(row);
-            anchor_ = {{row.group, row.id}};
-        }
-        on_mark(picked, press_ctrl_ && !press_shift_);
-        return;
     }
-    anchor_ = {{row.group, row.id}};
     if (on_select) {
         on_select(row);
     }
@@ -283,8 +275,6 @@ void ListView::handle(const PointerEvent& e) {
             focus_visible_ = false;
             pressed_ = over;
             press_clicks_ = e.clicks;
-            press_ctrl_ = e.ctrl;
-            press_shift_ = e.shift;
             if (over) {
                 cursor_ = over;
             }
@@ -477,6 +467,12 @@ void ListView::paint_row(Canvas& canvas, const ColorScheme& scheme, std::size_t 
         const double x = t.padding + static_cast<double>(row.depth) * t.indent;
         kit_.icons.draw(canvas, row.expanded ? kit_.cfg->icons.expanded : kit_.cfg->icons.collapsed,
                         {x, box.y + (box.height - t.chevron_size) / 2.0}, t.chevron_size, side);
+    }
+    if (options_.checks && row.check) {
+        kit_.icons.draw(canvas, *row.check ? kit_.cfg->icons.box_checked : kit_.cfg->icons.box_unchecked,
+                        {check_left(row), box.y + (box.height - t.check_size) / 2.0}, t.check_size,
+                        lm::color::scale_alpha(scheme[*row.check ? Role::primary : Role::on_surface_variant],
+                                               dim));
     }
     if (row.icon) {
         kit_.icons.draw(canvas, *row.icon,

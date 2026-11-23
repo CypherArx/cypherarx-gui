@@ -133,15 +133,15 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   number of them, and none for something with no site. A service without a name is shown by
   its first URL, in the tree, in the other axis's column and in the selection lists, and the
   search looks at that URL too. The field types an entry takes are `Session::field_types`.
-- Selecting several entries: in the entry tree, Ctrl and a click adds a row to the selection
-  or takes it out, and Shift and a click selects the rows from the last clicked one to this
-  one. A plain click or an arrow key goes back to one row. The selection is in the model
-  (`Session::marked`), and the list only reports the rows that were picked.
-- Setting a persona for several accounts: the *Set Persona* button next to the organize
-  button opens the personas, with *(none)* first, and gives the chosen one to every selected
-  account (rows of other kinds in the selection are left alone). With one row selected it
-  works on that account. It is how imported accounts, which arrive without a persona unless
-  one was chosen at import, are sorted into personas.
+- Setting a persona for several accounts: every account row in the entry tree has a
+  checkbox, and only account rows do, so a service or a persona cannot be caught up in the
+  change. Ticking does not move the selection, and the ticks stay while other rows are
+  looked at. The *Set Persona* button next to the organize button opens the personas, with
+  *(none)* first; after a confirmation that names the persona and the number of accounts,
+  the ticked accounts get it and the ticks are cleared. It is how imported accounts, which
+  arrive without a persona unless one was chosen at import, are sorted into personas. The
+  ticks are in the model (`Session::marked`); the list draws a checkbox for a row that has a
+  `check` value and reports a click on it.
 - Merging services: a service's row has a *Merge Into Another Service* action. It asks which
   service to merge into; that one keeps its name, takes this one's accounts and URLs, and
   this one is removed. It is for services that turned out to be the same, such as one made

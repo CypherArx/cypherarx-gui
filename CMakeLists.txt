@@ -39,6 +39,8 @@ lamina_add_resources(cypherarx_gui_resources
     autorenew
     category
     check
+    check_box
+    check_box_outline_blank
     chevron_right
     content_copy
     create_new_folder

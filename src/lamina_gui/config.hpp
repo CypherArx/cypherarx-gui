@@ -119,6 +119,7 @@ struct ListConfig {
     double indent = 18.0;
     double chevron_size = 20.0;
     double icon_size = 18.0;
+    double check_size = 20.0;
     double icon_gap = 8.0;
     double cell_gap = 12.0;
     double row_inset_x = 4.0;
@@ -220,6 +221,8 @@ struct IconConfig {
     lamina::icons::Symbol dropdown = res::icons::expand_more;
     lamina::icons::Symbol show = res::icons::visibility;
     lamina::icons::Symbol checked = res::icons::check;
+    lamina::icons::Symbol box_checked = res::icons::check_box;
+    lamina::icons::Symbol box_unchecked = res::icons::check_box_outline_blank;
     lamina::icons::Symbol theme_menu = res::icons::palette;
     lamina::icons::Symbol vault_menu = res::icons::settings;
     lamina::icons::Symbol vault_settings = res::icons::tune;
