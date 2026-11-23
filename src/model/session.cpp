@@ -286,6 +286,8 @@ std::optional<Status> Session::poll_unlock(ClipboardPort& clipboard) {
     close_vault(clipboard);
     vault_ = std::move(*result);
     vault_path_ = unlock_path_;
+    unlocked_at_ = Clock::now();
+    last_activity_ = unlocked_at_;
     reload_entries();
     after_unlock();
     return Status{};
@@ -1117,12 +1119,51 @@ Status Session::delete_login_method(std::int64_t id) {
     return {};
 }
 
+void Session::note_activity(Clock::time_point now) {
+    last_activity_ = now;
+}
+
+bool Session::lock_if_due(ClipboardPort& clipboard, Clock::time_point now) {
+    if (!vault_ || rotating()) {
+        return false;
+    }
+    const int idle = vault_settings_.session_lock_idle_minutes;
+    const int session = vault_settings_.session_duration_minutes;
+    std::string reason;
+    if (idle > 0 && now - last_activity_ >= std::chrono::minutes(idle)) {
+        reason = format(text::locked_idle_fmt, idle);
+    } else if (session > 0 && now - unlocked_at_ >= std::chrono::minutes(session)) {
+        reason = format(text::locked_session_fmt, session);
+    } else {
+        return false;
+    }
+    close_vault(clipboard);
+    status_ = std::move(reason);
+    touch();
+    return true;
+}
+
 void Session::tick(ClipboardPort& clipboard) {
     clipboard_.tick(clipboard);
 }
 
 std::optional<double> Session::next_wake_seconds() const {
-    return clipboard_.seconds_until_clear();
+    std::optional<double> wake = clipboard_.seconds_until_clear();
+    if (!vault_) {
+        return wake;
+    }
+    const auto now = Clock::now();
+    const auto until = [&](Clock::time_point from, int minutes) {
+        if (minutes <= 0) {
+            return;
+        }
+        const double seconds =
+            std::max(0.0, std::chrono::duration<double>(from + std::chrono::minutes(minutes) - now).count());
+        wake = wake ? std::min(*wake, seconds) : seconds;
+    };
+    until(last_activity_, vault_settings_.session_lock_idle_minutes);
+    until(unlocked_at_, vault_settings_.session_duration_minutes);
+    return wake;
 }
 
 } // namespace cypherarx::gui

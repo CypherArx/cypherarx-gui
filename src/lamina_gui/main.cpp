@@ -215,6 +215,19 @@ int run_selftest() {
                     "copy after the rotation") &&
              ok;
 
+        const auto t0 = gui::Session::Clock::now();
+        s.note_activity(t0);
+        ok = expect(!s.lock_if_due(clipboard, t0 + std::chrono::minutes(2)) && s.has_vault(),
+                    "no lock before the idle time is up") &&
+             ok;
+        s.note_activity(t0 + std::chrono::minutes(2));
+        ok = expect(!s.lock_if_due(clipboard, t0 + std::chrono::minutes(4)) && s.has_vault(),
+                    "input restarts the idle time") &&
+             ok;
+        ok = expect(s.lock_if_due(clipboard, t0 + std::chrono::minutes(5)) && !s.has_vault(),
+                    "the vault locks after the idle time") &&
+             ok;
+
         s.close_vault(clipboard);
         ok = expect(clipboard.text().empty() && !s.has_vault(), "close clears the clipboard") && ok;
     }

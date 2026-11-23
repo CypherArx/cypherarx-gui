@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -198,6 +199,11 @@ public:
                                std::optional<std::int64_t> via, const std::string& notes);
     Status delete_login_method(std::int64_t id);
 
+    using Clock = std::chrono::steady_clock;
+
+    void note_activity(Clock::time_point now = Clock::now());
+    bool lock_if_due(ClipboardPort& clipboard, Clock::time_point now = Clock::now());
+
     void tick(ClipboardPort& clipboard);
     std::optional<double> next_wake_seconds() const;
 
@@ -234,6 +240,8 @@ private:
     std::future<std::expected<Vault, VaultError>> unlock_;
     UnlockMode unlock_mode_ = UnlockMode::Open;
     Settings vault_settings_;
+    std::chrono::steady_clock::time_point unlocked_at_{};
+    std::chrono::steady_clock::time_point last_activity_{};
     std::future<std::expected<void, VaultError>> rotate_;
     std::string unlock_path_;
 

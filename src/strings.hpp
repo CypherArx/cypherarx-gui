@@ -162,7 +162,10 @@ inline constexpr const char* settings_keyring = "Keep the session in the OS keyr
 inline constexpr const char* settings_screensaver = "Lock when the screensaver starts";
 inline constexpr const char* settings_export = "Ask for the password before an export";
 inline constexpr const char* settings_note =
-    "These are stored in the vault, encrypted. So far only the access log setting has an effect.";
+    "These are stored in the vault, encrypted. The access log, the idle lock and the session length take "
+    "effect; the keyring, the screensaver and the export settings do not yet.";
+inline constexpr const char* locked_idle_fmt = "Locked after %d minutes without input.";
+inline constexpr const char* locked_session_fmt = "Locked: the %d-minute session is over.";
 inline constexpr const char* settings_not_numbers = "Enter whole numbers.";
 inline constexpr const char* confirm_rotate =
     "Rotate the data key? Every stored value is encrypted again with a new key. The master password is "

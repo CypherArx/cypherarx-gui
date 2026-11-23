@@ -214,6 +214,26 @@ void App::save_preferences() {
     }
 }
 
+void App::locked() {
+    const std::string reason = session_.status();
+    const std::array<Sheet*, 7> sheets{&entry_sheet_, &field_sheet_, &organize_sheet_, &login_sheet_,
+                                       &settings_sheet_, &import_sheet_, &merge_sheet_};
+    for (Sheet* sheet : sheets) {
+        if (sheet->is_open()) {
+            if (sheet->on_cancel) {
+                sheet->on_cancel();
+            } else {
+                sheet->close();
+            }
+        }
+    }
+    for (const auto& modal : owned_) {
+        modal->cancel();
+    }
+    offer_last_vault();
+    session_.report(reason);
+}
+
 void App::offer_last_vault() {
     if (preferences_.vault.empty()) {
         return;
@@ -774,6 +794,9 @@ Argb App::update(const lm::sdl3::Frame& frame) {
     }
     layout();
 
+    if (!frame.pointer.empty() || !frame.wheel.empty() || !frame.keys.empty() || !frame.text.empty()) {
+        session_.note_activity();
+    }
     for (const auto& e : frame.pointer) {
         if (handle_title_bar(e)) {
             continue;
@@ -820,6 +843,9 @@ Argb App::update(const lm::sdl3::Frame& frame) {
         }
     }
     session_.tick(clipboard_);
+    if (session_.lock_if_due(clipboard_)) {
+        locked();
+    }
     if (dirty_ || session_.revision() != seen_revision_) {
         sync();
     }

@@ -62,6 +62,7 @@ private:
     Modal* top_modal() const;
     void choose_vault(gui::UnlockMode mode);
     void offer_last_vault();
+    void locked();
     void save_preferences();
     void notify(const std::string& text);
     void apply_theme(std::size_t index);

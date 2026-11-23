@@ -199,8 +199,16 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
 - Vault menu (the gear button, with a vault open):
   - *Vault settings*: the values the core keeps encrypted in the vault (access log
     retention, session length, idle lock, OS keyring, lock on screensaver, password before
-    an export). **Only the access log retention has an effect so far**; nothing locks the
-    vault by itself yet, and the sheet says so.
+    an export). The access log retention, the idle lock and the session length take effect;
+    the keyring, the screensaver and the export settings do not yet, and the sheet says so.
+- Locking: the vault closes by itself after the idle time without pointer, wheel, key or
+  text input (0 turns this off), and when the session length since unlocking is over,
+  whether or not it was in use. Open sheets are cancelled, which wipes what was typed into
+  them, the status line says why, and the password sheet for the same vault opens. A running
+  key rotation is not interrupted. The times are the vault's settings, so the defaults (10
+  and 30 minutes) apply to a vault that never changed them. The rule is in the model
+  (`Session::lock_if_due`, which takes the time, so the smoke test checks it without
+  waiting); the window reports input and wakes itself when a lock is next due.
   - *Import CSV*: reads a browser's or a password manager's CSV export into guarded memory
     and adds one service per site, found by any of its URLs or made with the site as its URL
     field and the row's URL as its login URL, and one account per row, whose fields are the user name
