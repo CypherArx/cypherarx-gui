@@ -108,6 +108,7 @@ public:
     bool has_vault() const { return vault_.has_value(); }
     const std::string& vault_path() const { return vault_path_; }
     const std::string& status() const { return status_; }
+    void report(std::string text);
     std::uint64_t revision() const { return revision_; }
 
     void start_unlock(UnlockMode mode, const std::filesystem::path& path,

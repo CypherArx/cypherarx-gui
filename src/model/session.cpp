@@ -69,6 +69,11 @@ std::string path_utf8(const std::filesystem::path& p) {
 
 Session::Session(SessionSettings settings) : settings_(settings), status_(text::no_vault) {}
 
+void Session::report(std::string text) {
+    status_ = std::move(text);
+    touch();
+}
+
 Session::~Session() {
     wipe_totp();
 }

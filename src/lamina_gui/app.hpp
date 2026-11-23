@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -12,6 +14,7 @@
 #include "lamina/widgets/title_bar.hpp"
 #include "lamina_sdl3/window.hpp"
 
+#include "model/preferences.hpp"
 #include "model/session.hpp"
 
 #include "lamina_gui/controls.hpp"
@@ -66,6 +69,9 @@ private:
 
     const Config& cfg_;
     lm::sdl3::Window window_;
+    std::filesystem::path preferences_file_;
+    gui::Preferences preferences_;
+    std::size_t theme_index_;
     Kit kit_;
     lm::widgets::TitleBar title_bar_;
     ColorScheme scheme_;
@@ -112,7 +118,6 @@ private:
     NodePtr root_;
     Rect window_rect_{0.0, 0.0, 0.0, 0.0};
     Size frame_size_{0.0, 0.0};
-    std::size_t theme_index_ = 0;
     std::uint64_t seen_revision_ = 0;
     bool dirty_ = true;
     bool totp_in_layout_ = false;

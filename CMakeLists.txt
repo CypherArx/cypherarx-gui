@@ -22,6 +22,7 @@ set(LAMINA_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/lamina-ui)
 
 add_library(cypherarx_gui_model STATIC
+  src/model/preferences.cpp
   src/model/projection.cpp
   src/model/session.cpp
   src/model/timed_clipboard.cpp

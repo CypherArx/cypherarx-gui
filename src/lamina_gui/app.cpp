@@ -4,11 +4,14 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <optional>
+#include <string>
 #include <utility>
 
 #include "lamina/tokens/motion.hpp"
 #include "lamina/tokens/title_bar.hpp"
 #include "lamina_sdl3/app.hpp"
+#include "lamina_sdl3/resources.hpp"
 #include "lamina_sdl3/system_fonts.hpp"
 #include "lamina_thorvg/canvas.hpp"
 
@@ -75,6 +78,15 @@ int title_bar_extra(const WindowConfig& window) {
     return drawn ? static_cast<int>(std::ceil(lm::tokens::title_bar_tokens.height)) : 0;
 }
 
+std::optional<std::size_t> theme_with_id(const ThemeConfig& config, const std::string& id) {
+    for (std::size_t i = 0; i < config.presets.size(); ++i) {
+        if (id == config.presets[i].id) {
+            return i;
+        }
+    }
+    return std::nullopt;
+}
+
 ColorScheme build_scheme(const ThemeConfig& config, const ThemePreset& theme) {
     return lm::color::spec_2025().build({config.seed, theme.dark, theme.variant, config.contrast});
 }
@@ -93,8 +105,13 @@ App::App()
       window_({cfg_.window.title, cfg_.window.width_dp,
                cfg_.window.height_dp + title_bar_extra(cfg_.window), cfg_.window.client_title_bar},
               std::make_unique<lm::thorvg::Canvas>(unsized_pixels, unsized_pixels)),
+      preferences_file_(lm::sdl3::preference_directory(cfg_.preferences.organization,
+                                                       cfg_.preferences.application) /
+                        cfg_.preferences.file),
+      preferences_(gui::load_preferences(preferences_file_)),
+      theme_index_(theme_with_id(cfg_.theme, preferences_.theme).value_or(cfg_.theme.initial)),
       kit_{lm::sdl3::system_font_stack(), lm::icons::IconFont::from_resource(res::fonts::symbols), &window_.clipboard(), &cfg_,
-           &cfg_.theme.presets[cfg_.theme.initial]},
+           &cfg_.theme.presets[theme_index_]},
       title_bar_({cfg_.window.title, kit_.icons, nullptr, kit_.theme->background}, kit_.fonts),
       scheme_(build_scheme(cfg_.theme, *kit_.theme)),
       scheme_from_(scheme_),
@@ -143,8 +160,10 @@ App::App()
       entry_sheet_(kit_, *this),
       field_sheet_(kit_, *this),
       organize_sheet_(kit_, *this),
-      login_sheet_(kit_, *this),
-      theme_index_(cfg_.theme.initial) {
+      login_sheet_(kit_, *this) {
+    if (!preferences_.theme.empty() && !theme_with_id(cfg_.theme, preferences_.theme)) {
+        session_.report(str::theme_unknown);
+    }
     window_.set_minimum_size(cfg_.window.min_width_dp,
                              cfg_.window.min_height_dp + title_bar_extra(cfg_.window));
     wire();
@@ -192,6 +211,10 @@ void App::apply_theme(std::size_t index) {
     open_.set_style(theme.vault_action);
     add_entry_.set_style(theme.entry_action);
     add_field_.set_style(theme.field_action);
+    preferences_.theme = theme.id;
+    if (!gui::save_preferences(preferences_file_, preferences_)) {
+        session_.report(str::theme_not_saved);
+    }
 }
 
 void App::open_theme_menu() {

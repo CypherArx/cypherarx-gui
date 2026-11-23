@@ -12,6 +12,7 @@
 
 #include "lamina_gui/app.hpp"
 #include "lamina_gui/config.hpp"
+#include "model/preferences.hpp"
 #include "model/session.hpp"
 
 namespace {
@@ -106,8 +107,23 @@ int run_selftest() {
         ok = expect(clipboard.text().empty() && !s.has_vault(), "close clears the clipboard") && ok;
     }
     fs::remove(path, ec);
+
+    const fs::path prefs =
+        fs::temp_directory_path() / "cypherarx_gui_selftest_preferences" / "preferences.conf";
+    fs::remove_all(prefs.parent_path(), ec);
+    ok = expect(gui::load_preferences(prefs) == gui::Preferences{}, "missing preferences are the defaults") &&
+         ok;
+    const gui::Preferences chosen{.theme = "light"};
+    ok = expect(gui::save_preferences(prefs, chosen) && gui::load_preferences(prefs) == chosen,
+                "preferences round trip") &&
+         ok;
+    ok = expect(gui::save_preferences(prefs, gui::Preferences{.theme = "dark-tonal"}) &&
+                    gui::load_preferences(prefs).theme == "dark-tonal",
+                "preferences are replaced") &&
+         ok;
+    fs::remove_all(prefs.parent_path(), ec);
     if (ok) {
-        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard)\n";
+        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, preferences)\n";
     }
     return ok ? 0 : 1;
 }

@@ -63,13 +63,14 @@ core is a private submodule, so the workflow checks it out with a repository sec
 src/strings.hpp                  every UI string
 
 src/model/session.{hpp,cpp}      the application without a toolkit: vault, selection, filters, entry/field/category/tag/login-method operations, TOTP, the rules for the kinds of entry
+src/model/preferences.{hpp,cpp}  the preferences file outside the vault: load and save
 src/model/projection.{hpp,cpp}   builds the entry tree for one axis (service / persona), applies the search/category/tag filter
 src/model/timed_clipboard.*      timed clipboard clearing behind a small clipboard interface
 src/model/secret_buffer.hpp      fixed-size text buffer in guarded memory, for password / secret value inputs
 
 src/platform/file_dialog*        native open/save dialogs
 
-src/lamina_gui/config.hpp        every tunable value (window, themes, sizes, icons, clipboard, KDF preset, buffer sizes)
+src/lamina_gui/config.hpp        every tunable value (window, themes, the preferences file, sizes, icons, clipboard, KDF preset, buffer sizes)
 src/lamina_gui/controls.*        one control interface, a panel that routes input and focus, wrappers around lamina-ui widgets, tooltips
 src/lamina_gui/list_view.*       scrolling list / tree / table rows with actions on the row
 src/lamina_gui/select_field.*    drop-down selection
@@ -131,8 +132,16 @@ reason (and to make a later translation a single-file change).
   outlines, one filled button), *Dark, tonal* (neutral greys, panes as raised surfaces) and
   *Light*. A theme is one `ThemePreset` in `config.hpp`: the scheme variant, the colour roles
   of the ground, the panes, the sheets and the popups, whether panes are filled or outlined,
-  and the kinds of the main buttons. Every theme is built from the same seed colour. The window
-  starts with the first one; the choice is not saved.
+  and the kinds of the main buttons. Every theme is built from the same seed colour. The
+  choice is saved and the window starts with it next time.
+- Preferences: the theme has to be known before any vault is open, so it cannot live in the
+  vault's encrypted settings. It is kept in `preferences.conf` in the system's per-user
+  application data directory (`%APPDATA%\CypherArx\CypherArx` on Windows), as plain
+  `key = value` lines; today the only key is `theme`, holding the `id` of a `ThemePreset`.
+  The file is replaced through a temporary file. A missing file means the defaults; a theme
+  this version does not know falls back to the first theme and says so in the status line,
+  as does a failed save. **Only what has to be known before a vault is open, and is not
+  secret, belongs in this file.** Everything else stays in the vault, encrypted.
 
 Not yet: session continuation via the OS keyring, in-app browser, favicons, import.
 

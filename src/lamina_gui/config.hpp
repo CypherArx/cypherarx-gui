@@ -29,6 +29,7 @@ struct WindowConfig {
 enum class PaneStyle { filled, outlined };
 
 struct ThemePreset {
+    const char* id;
     const char* name;
     lamina::icons::Symbol icon;
     bool dark;
@@ -47,7 +48,8 @@ struct ThemeConfig {
     lamina::color::Argb seed = 0xff3d6fb4;
     double contrast = 0.0;
     std::vector<ThemePreset> presets{
-        {.name = cypherarx::gui::text::theme_dark_outlined,
+        {.id = "dark-outlined",
+         .name = cypherarx::gui::text::theme_dark_outlined,
          .icon = res::icons::dark_mode,
          .dark = true,
          .variant = lamina::color::Variant::tonal_spot,
@@ -59,7 +61,8 @@ struct ThemeConfig {
          .vault_action = lamina::tokens::ButtonStyle::outlined,
          .entry_action = lamina::tokens::ButtonStyle::filled,
          .field_action = lamina::tokens::ButtonStyle::outlined},
-        {.name = cypherarx::gui::text::theme_dark_tonal,
+        {.id = "dark-tonal",
+         .name = cypherarx::gui::text::theme_dark_tonal,
          .icon = res::icons::dark_mode,
          .dark = true,
          .variant = lamina::color::Variant::neutral,
@@ -71,7 +74,8 @@ struct ThemeConfig {
          .vault_action = lamina::tokens::ButtonStyle::tonal,
          .entry_action = lamina::tokens::ButtonStyle::filled,
          .field_action = lamina::tokens::ButtonStyle::filled},
-        {.name = cypherarx::gui::text::theme_light,
+        {.id = "light",
+         .name = cypherarx::gui::text::theme_light,
          .icon = res::icons::light_mode,
          .dark = false,
          .variant = lamina::color::Variant::tonal_spot,
@@ -240,8 +244,15 @@ struct Limits {
     std::size_t value_buffer = 4096;
 };
 
+struct PreferencesConfig {
+    const char* organization = "CypherArx";
+    const char* application = "CypherArx";
+    const char* file = "preferences.conf";
+};
+
 struct Config {
     WindowConfig window;
+    PreferencesConfig preferences;
     ThemeConfig theme;
     LayoutConfig layout;
     ListConfig list;
