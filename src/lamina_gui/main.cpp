@@ -3,6 +3,8 @@
 #include <cstring>
 #include <exception>
 #include <filesystem>
+#include <fstream>
+#include <optional>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -103,6 +105,38 @@ int run_selftest() {
         ok = expect(s.copy_selected_field(clipboard).has_value() && clipboard.text() == "secret",
                     "copy") &&
              ok;
+        cypherarx::Settings changed = s.vault_settings();
+        changed.session_lock_idle_minutes = 3;
+        ok = expect(s.set_vault_settings(changed).has_value() && s.vault_settings() == changed,
+                    "vault settings") &&
+             ok;
+
+        const fs::path csv = fs::temp_directory_path() / "cypherarx_gui_selftest_import.csv";
+        {
+            std::ofstream out(csv, std::ios::binary);
+            out << "name,url,username,password\nImported,https://imported.example,me,pw\n";
+        }
+        const auto imported = s.import_csv(csv);
+        fs::remove(csv, ec);
+        ok = expect(imported.has_value() && imported->services == 1 && imported->accounts == 1 &&
+                        imported->fields == 1,
+                    "import") &&
+             ok;
+
+        s.start_rotate(pw);
+        std::optional<gui::Status> rotated;
+        while (!(rotated = s.poll_rotate())) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        ok = expect(rotated->has_value(), "rotate key") && ok;
+        s.select_entry(account);
+        if (!s.fields().empty()) {
+            s.select_field(s.fields().front().id);
+        }
+        ok = expect(s.copy_selected_field(clipboard).has_value() && clipboard.text() == "secret",
+                    "copy after the rotation") &&
+             ok;
+
         s.close_vault(clipboard);
         ok = expect(clipboard.text().empty() && !s.has_vault(), "close clears the clipboard") && ok;
     }
@@ -126,7 +160,7 @@ int run_selftest() {
          ok;
     fs::remove_all(prefs.parent_path(), ec);
     if (ok) {
-        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, preferences)\n";
+        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, settings, import, rotation, preferences)\n";
     }
     return ok ? 0 : 1;
 }

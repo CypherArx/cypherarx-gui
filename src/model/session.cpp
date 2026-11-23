@@ -4,6 +4,8 @@
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
+#include <fstream>
+#include <system_error>
 #include <string_view>
 #include <unordered_set>
 
@@ -58,6 +60,8 @@ const char* vault_error_text(VaultError e) {
         case VaultError::NotUnlocked:        return text::err_not_unlocked;
         case VaultError::NotFound:           return text::err_not_found;
         case VaultError::Forbidden:          return text::err_forbidden;
+        case VaultError::InvalidValue:       return text::err_invalid_value;
+        case VaultError::ScrubFailed:        return text::err_scrub_failed;
         default:                             return text::err_unexpected;
     }
 }
@@ -86,7 +90,136 @@ void Session::report(std::string text) {
 }
 
 Session::~Session() {
+    finish_rotation();
     wipe_totp();
+}
+
+void Session::finish_rotation() {
+    if (!rotate_.valid()) {
+        return;
+    }
+    const auto result = rotate_.get();
+    if (!result) {
+        status_ = failure(text::rotate_key, result.error()).message;
+    }
+}
+
+void Session::after_unlock() {
+    vault_settings_ = {};
+    if (!vault_) {
+        return;
+    }
+    const auto settings = vault_->settings();
+    if (!settings) {
+        status_ = failure(text::vault_settings, settings.error()).message;
+        return;
+    }
+    vault_settings_ = *settings;
+    const auto purged = vault_->purge_access_records(static_cast<std::int64_t>(unix_now()));
+    if (!purged) {
+        status_ = failure(text::access_log, purged.error()).message;
+    }
+}
+
+void Session::record(AccessAction action) {
+    if (!vault_ || !selected_entry_) {
+        return;
+    }
+    const auto recorded =
+        vault_->record_access(*selected_entry_, action, static_cast<std::int64_t>(unix_now()));
+    if (!recorded) {
+        status_ = failure(text::access_log, recorded.error()).message;
+        touch();
+    }
+}
+
+Status Session::set_vault_settings(const Settings& settings) {
+    if (!vault_) {
+        return fail(text::no_vault);
+    }
+    const auto stored = vault_->set_settings(settings);
+    if (!stored) {
+        return fail(failure(text::vault_settings, stored.error()).message);
+    }
+    vault_settings_ = settings;
+    status_ = text::vault_settings_saved;
+    touch();
+    return {};
+}
+
+void Session::start_rotate(std::span<const std::uint8_t> password) {
+    if (!vault_ || rotating() || unlocking()) {
+        return;
+    }
+    Secret pw(password);
+    Vault* vault = &*vault_;
+    rotate_ = std::async(std::launch::async, [pw = std::move(pw), vault]() mutable {
+        auto r = vault->rotate_key(pw.bytes());
+        pw = Secret();
+        return r;
+    });
+    touch();
+}
+
+std::optional<Status> Session::poll_rotate() {
+    if (!rotate_.valid() ||
+        rotate_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+        return std::nullopt;
+    }
+    const auto result = rotate_.get();
+    touch();
+    if (!result) {
+        return fail(failure(text::rotate_key, result.error()).message);
+    }
+    status_ = text::key_rotated;
+    return Status{};
+}
+
+Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file) {
+    if (!vault_) {
+        return fail(text::no_vault);
+    }
+    std::error_code ec;
+    const std::uintmax_t size = std::filesystem::file_size(file, ec);
+    if (ec) {
+        return fail(text::import_cannot_read);
+    }
+    if (size == 0) {
+        return fail(text::import_empty);
+    }
+    if (size > settings_.import_max_bytes) {
+        return fail(text::import_too_large);
+    }
+    Secret data(static_cast<std::size_t>(size));
+    char* const text_data = reinterpret_cast<char*>(data.data());
+    std::ifstream in(file, std::ios::binary);
+    in.read(text_data, static_cast<std::streamsize>(data.size()));
+    if (!in || static_cast<std::size_t>(in.gcount()) != data.size()) {
+        return fail(text::import_cannot_read);
+    }
+    const auto logins = parse_logins_csv({text_data, data.size()});
+    if (!logins) {
+        switch (logins.error()) {
+        case ImportError::NoHeader:
+            return fail(text::import_empty);
+        case ImportError::NoSecretColumn:
+            return fail(text::import_no_secret_column);
+        case ImportError::Malformed:
+            return fail(text::import_malformed);
+        }
+        return fail(text::err_unexpected);
+    }
+    const auto summary = vault_->import_logins(
+        *logins, {text::import_password_label, text::import_totp_label, text::import_password_type,
+                  text::import_totp_type});
+    if (!summary) {
+        return fail(failure(text::import_csv, summary.error()).message);
+    }
+    reload_entries();
+    status_ = format(text::imported_fmt, summary->accounts, summary->services, summary->fields,
+                     summary->skipped_existing, summary->skipped_empty);
+    touch();
+    return *summary;
 }
 
 Failure Session::failure(const std::string& what, VaultError e) const {
@@ -129,11 +262,14 @@ std::optional<Status> Session::poll_unlock(ClipboardPort& clipboard) {
     vault_ = std::move(*result);
     vault_path_ = unlock_path_;
     reload_entries();
+    after_unlock();
     return Status{};
 }
 
 void Session::close_vault(ClipboardPort& clipboard) {
+    finish_rotation();
     wipe_totp();
+    vault_settings_ = {};
     clipboard_.clear_now(clipboard);
     vault_.reset();
     vault_path_.clear();
@@ -691,6 +827,7 @@ Status Session::copy_selected_field(ClipboardPort& clipboard) {
     clipboard_.copy(clipboard, value->bytes(), settings_.clipboard_clear_seconds);
     status_ = format(text::copied_fmt, settings_.clipboard_clear_seconds);
     touch();
+    record(AccessAction::copy);
     return {};
 }
 
@@ -723,6 +860,7 @@ Status Session::show_totp() {
     totp_key_ = std::move(*key);
     totp_field_ = f->id;
     touch();
+    record(AccessAction::view);
     return {};
 }
 
@@ -767,6 +905,7 @@ Status Session::copy_totp(ClipboardPort& clipboard) {
                     settings_.clipboard_clear_seconds);
     status_ = format(text::copied_fmt, settings_.clipboard_clear_seconds);
     touch();
+    record(AccessAction::copy);
     return {};
 }
 

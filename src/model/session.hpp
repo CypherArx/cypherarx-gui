@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
@@ -40,6 +41,7 @@ struct SessionSettings {
     int clipboard_clear_seconds = 20;
     const char* category_indent = "    ";
     std::uint32_t totp_period_seconds = 30;
+    std::size_t import_max_bytes = 16 * 1024 * 1024;
 };
 
 struct Scope {
@@ -119,6 +121,13 @@ public:
     std::optional<Status> poll_unlock(ClipboardPort& clipboard);
     void close_vault(ClipboardPort& clipboard);
 
+    const Settings& vault_settings() const { return vault_settings_; }
+    Status set_vault_settings(const Settings& settings);
+    void start_rotate(std::span<const std::uint8_t> password);
+    bool rotating() const { return rotate_.valid(); }
+    std::optional<Status> poll_rotate();
+    Outcome<ImportSummary> import_csv(const std::filesystem::path& file);
+
     Axis axis() const { return axis_; }
     void set_axis(Axis axis);
     const Filter& filter() const { return filter_; }
@@ -190,6 +199,9 @@ private:
     void reload_fields();
     void rebuild_projection();
     void wipe_totp();
+    void after_unlock();
+    void finish_rotation();
+    void record(AccessAction action);
     Failure failure(const std::string& what, VaultError e) const;
 
     SessionSettings settings_;
@@ -210,6 +222,8 @@ private:
 
     std::future<std::expected<Vault, VaultError>> unlock_;
     UnlockMode unlock_mode_ = UnlockMode::Open;
+    Settings vault_settings_;
+    std::future<std::expected<void, VaultError>> rotate_;
     std::string unlock_path_;
 
     std::optional<std::int64_t> totp_field_;

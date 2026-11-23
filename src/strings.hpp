@@ -136,6 +136,24 @@ inline constexpr std::array<const char*, 3> field_types = {"text", "password", "
 inline constexpr std::array<const char*, 8> login_method_types = {
     "email", "google", "github", "apple", "twitter", "line", "facebook", "other"};
 
+inline constexpr const char* vault_settings = "Vault settings";
+inline constexpr const char* vault_settings_saved = "Vault settings saved.";
+inline constexpr const char* rotate_key = "Rotate key";
+inline constexpr const char* key_rotated = "The data key was rotated.";
+inline constexpr const char* access_log = "Access log";
+inline constexpr const char* import_csv = "Import CSV";
+inline constexpr const char* imported_fmt =
+    "Imported %zu accounts into %zu new services (%zu fields). Skipped: %zu already present, %zu with nothing to store.";
+inline constexpr const char* import_cannot_read = "Could not read the file.";
+inline constexpr const char* import_too_large = "The file is too large to import.";
+inline constexpr const char* import_empty = "The file is empty.";
+inline constexpr const char* import_no_secret_column = "The file has no password or TOTP column.";
+inline constexpr const char* import_malformed = "The file is not valid CSV.";
+inline constexpr const char* import_password_label = "Password";
+inline constexpr const char* import_totp_label = "TOTP";
+inline constexpr const char* import_password_type = "password";
+inline constexpr const char* import_totp_type = "totp";
+
 inline constexpr const char* err_cannot_open_file = "Could not open the file.";
 inline constexpr const char* err_already_initialized = "A vault already exists at that path.";
 inline constexpr const char* err_not_initialized = "No vault found at that path.";
@@ -145,6 +163,9 @@ inline constexpr const char* err_kdf_failed = "Key derivation failed.";
 inline constexpr const char* err_not_unlocked = "The vault is locked.";
 inline constexpr const char* err_not_found = "Not found.";
 inline constexpr const char* err_forbidden = "Not allowed for this item.";
+inline constexpr const char* err_invalid_value = "A value is out of range.";
+inline constexpr const char* err_scrub_failed =
+    "The key was rotated, but the old data could not be removed from the file.";
 inline constexpr const char* err_unexpected = "Unexpected error.";
 
 } // namespace cypherarx::gui::text
