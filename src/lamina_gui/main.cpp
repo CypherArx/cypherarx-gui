@@ -121,6 +121,11 @@ int run_selftest() {
         ok = expect(s.copy_selected_field(clipboard).has_value() && clipboard.text() == "secret",
                     "copy") &&
              ok;
+        s.set_scope({gui::Scope::Kind::recent});
+        ok = expect(s.projection().is_match(account) && !s.projection().is_match(unnamed),
+                    "the recently used scope holds what was copied") &&
+             ok;
+        s.set_scope({});
         cypherarx::Settings changed = s.vault_settings();
         changed.session_lock_idle_minutes = 3;
         ok = expect(s.set_vault_settings(changed).has_value() && s.vault_settings() == changed,

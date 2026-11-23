@@ -592,6 +592,7 @@ void App::sync_sidebar() {
     };
     item(Kind::all, 0, str::all_items, cfg_.icons.all_items);
     item(Kind::favorites, 0, str::favorites, cfg_.icons.favorite);
+    item(Kind::recent, 0, str::recently_used, cfg_.icons.recent);
     const gui::IdLabels categories = session_.flat_categories();
     if (!categories.empty()) {
         section(str::categories);

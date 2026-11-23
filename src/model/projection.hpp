@@ -20,8 +20,9 @@ struct Filter {
     std::optional<std::int64_t> category;
     std::optional<std::int64_t> tag;
     bool favorites_only = false;
+    bool recent_only = false;
 
-    bool active() const { return !query.empty() || category || tag || favorites_only; }
+    bool active() const { return !query.empty() || category || tag || favorites_only || recent_only; }
     void clear() { *this = Filter{}; }
 };
 

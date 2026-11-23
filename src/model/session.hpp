@@ -47,7 +47,7 @@ struct SessionSettings {
 };
 
 struct Scope {
-    enum class Kind { all, favorites, category, tag };
+    enum class Kind { all, favorites, category, tag, recent };
 
     Kind kind = Kind::all;
     std::int64_t id = 0;
@@ -215,6 +215,7 @@ private:
     void rebuild_projection();
     void wipe_totp();
     void after_unlock();
+    void reload_uses();
     void finish_rotation();
     void record(AccessAction action);
     Failure failure(const std::string& what, VaultError e) const;
@@ -232,6 +233,7 @@ private:
     Filter filter_;
     std::optional<std::int64_t> selected_entry_;
     std::unordered_set<std::int64_t> marked_;
+    std::unordered_map<std::string, std::size_t> uses_;
     std::vector<Field> fields_;
     std::optional<std::int64_t> selected_field_;
     std::string status_;

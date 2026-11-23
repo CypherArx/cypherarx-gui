@@ -118,7 +118,28 @@ void Session::after_unlock() {
     const auto purged = vault_->purge_access_records(static_cast<std::int64_t>(unix_now()));
     if (!purged) {
         status_ = failure(text::access_log, purged.error()).message;
+        return;
     }
+    reload_uses();
+}
+
+void Session::reload_uses() {
+    uses_.clear();
+    if (!vault_) {
+        return;
+    }
+    const auto records = vault_->access_records(static_cast<std::int64_t>(unix_now()));
+    if (!records) {
+        status_ = failure(text::access_log, records.error()).message;
+        return;
+    }
+    for (const AccessRecord& record : *records) {
+        ++uses_[record.entry_uuid];
+    }
+    if (filter_.recent_only) {
+        rebuild_projection();
+    }
+    touch();
 }
 
 void Session::record(AccessAction action) {
@@ -130,7 +151,11 @@ void Session::record(AccessAction action) {
     if (!recorded) {
         status_ = failure(text::access_log, recorded.error()).message;
         touch();
+        return;
     }
+    const std::string kept = status_;
+    reload_uses();
+    status_ = kept;
 }
 
 Status Session::set_vault_settings(const Settings& settings) {
@@ -142,6 +167,7 @@ Status Session::set_vault_settings(const Settings& settings) {
         return fail(failure(text::vault_settings, stored.error()).message);
     }
     vault_settings_ = settings;
+    reload_uses();
     status_ = text::vault_settings_saved;
     touch();
     return {};
@@ -298,6 +324,7 @@ void Session::close_vault(ClipboardPort& clipboard) {
     wipe_totp();
     vault_settings_ = {};
     marked_.clear();
+    uses_.clear();
     clipboard_.clear_now(clipboard);
     vault_.reset();
     vault_path_.clear();
@@ -334,6 +361,9 @@ Scope Session::scope() const {
     if (filter_.favorites_only) {
         return {Scope::Kind::favorites};
     }
+    if (filter_.recent_only) {
+        return {Scope::Kind::recent};
+    }
     if (filter_.category) {
         return {Scope::Kind::category, *filter_.category};
     }
@@ -345,6 +375,7 @@ Scope Session::scope() const {
 
 void Session::set_scope(Scope scope) {
     filter_.favorites_only = scope.kind == Scope::Kind::favorites;
+    filter_.recent_only = scope.kind == Scope::Kind::recent;
     filter_.category = scope.kind == Scope::Kind::category ? std::optional(scope.id) : std::nullopt;
     filter_.tag = scope.kind == Scope::Kind::tag ? std::optional(scope.id) : std::nullopt;
     rebuild_projection();
@@ -411,6 +442,9 @@ std::string Session::entry_detail(const Entry& e) const {
         if (e.persona_id) {
             detail += " \u00d7 " + proj_.label_of(e.persona_id);
         }
+    }
+    if (const auto used = uses_.find(e.uuid); used != uses_.end()) {
+        detail += "  |  " + format(text::used_fmt, used->second);
     }
     if (e.category_id) {
         if (const Category* c = find_category(*e.category_id)) {
@@ -482,6 +516,9 @@ void Session::rebuild_projection() {
         }
         match = [this, subtree = std::move(subtree)](const Entry& e) {
             if (filter_.favorites_only && !e.is_favorite) {
+                return false;
+            }
+            if (filter_.recent_only && !uses_.contains(e.uuid)) {
                 return false;
             }
             if (filter_.category && !(e.category_id && subtree.contains(*e.category_id))) {

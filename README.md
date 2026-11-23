@@ -221,7 +221,10 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
     encrypted again with a new data key, on a worker thread behind the spinner.
 - Access log: copying a field value or a TOTP code, and showing a TOTP code, is recorded in
   the vault (encrypted), and records past the retention are removed when the vault is
-  opened. Nothing shows the log yet (no "recently used" list or ranking).
+  opened. The sidebar's *Recently used* shows the entries with a record inside the
+  retention, in the tree with their parents, and the line under a selected entry's name says
+  how many times it was used in that time. With a retention of 0 nothing is recorded and the
+  view is empty. There is no ranking by use.
 
 Not yet: session continuation via the OS keyring, in-app browser, favicons, import.
 
