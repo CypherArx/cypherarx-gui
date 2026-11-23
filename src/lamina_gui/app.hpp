@@ -112,6 +112,7 @@ private:
     TextFieldC& search_;
     ButtonC& add_entry_;
     IconButtonC& organize_;
+    IconButtonC& tick_all_;
     IconButtonC& set_persona_;
     ListView& tree_;
     LabelC& title_;

@@ -621,6 +621,34 @@ void Session::toggle_mark(std::int64_t id) {
     touch();
 }
 
+std::vector<std::int64_t> Session::accounts_in_view() const {
+    std::vector<std::int64_t> out;
+    for (const Entry& e : entries_) {
+        if (e.entry_type == "account" && proj_.is_match(e.id)) {
+            out.push_back(e.id);
+        }
+    }
+    return out;
+}
+
+bool Session::all_marked() const {
+    const std::vector<std::int64_t> accounts = accounts_in_view();
+    return !accounts.empty() && std::ranges::all_of(accounts, [&](std::int64_t id) {
+        return marked_.contains(id);
+    });
+}
+
+void Session::mark_all(bool on) {
+    marked_.clear();
+    if (on) {
+        for (const std::int64_t id : accounts_in_view()) {
+            marked_.insert(id);
+        }
+    }
+    status_ = format(text::marked_fmt, marked_.size());
+    touch();
+}
+
 void Session::clear_marks() {
     if (!marked_.empty()) {
         marked_.clear();

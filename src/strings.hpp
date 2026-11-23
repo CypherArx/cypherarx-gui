@@ -29,6 +29,7 @@ inline constexpr const char* add_entry = "Add Entry";
 inline constexpr const char* edit_entry = "Edit Entry";
 inline constexpr const char* delete_entry = "Delete Entry";
 inline constexpr const char* set_persona = "Set Persona";
+inline constexpr const char* tick_all = "Tick or Untick All Accounts";
 inline constexpr const char* select_accounts_first =
     "Tick the accounts to change first.";
 inline constexpr const char* confirm_set_persona_fmt = "Set the persona of %zu accounts to \"%s\"?";

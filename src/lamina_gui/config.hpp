@@ -238,6 +238,7 @@ struct IconConfig {
     lamina::icons::Symbol login_methods = res::icons::login;
     lamina::icons::Symbol merge_service = res::icons::merge;
     lamina::icons::Symbol set_persona = res::icons::person_add;
+    lamina::icons::Symbol tick_all = res::icons::select_all;
     lamina::icons::Symbol organize = res::icons::category;
     lamina::icons::Symbol totp = res::icons::timer;
     lamina::icons::Symbol service = res::icons::public_;

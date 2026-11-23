@@ -154,6 +154,9 @@ public:
     void select_entry(std::optional<std::int64_t> id);
     const std::unordered_set<std::int64_t>& marked() const { return marked_; }
     void toggle_mark(std::int64_t id);
+    std::vector<std::int64_t> accounts_in_view() const;
+    bool all_marked() const;
+    void mark_all(bool on);
     void clear_marks();
     std::vector<std::int64_t> marked_accounts() const;
     Status set_persona_of_marked(std::optional<std::int64_t> persona);

@@ -208,6 +208,13 @@ int run_selftest() {
                     "setting the persona of the marked accounts") &&
              ok;
         s.clear_marks();
+        s.mark_all(true);
+        ok = expect(s.all_marked() && s.marked().size() == s.accounts_in_view().size() &&
+                        !s.marked().contains(service),
+                    "tick all takes every account in view and nothing else") &&
+             ok;
+        s.mark_all(false);
+        ok = expect(s.marked().empty() && !s.all_marked(), "untick all") && ok;
 
         s.start_rotate(pw);
         std::optional<gui::Status> rotated;

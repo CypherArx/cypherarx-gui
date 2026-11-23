@@ -60,6 +60,7 @@ lamina_add_resources(cypherarx_gui_resources
     person
     person_add
     public
+    select_all
     sell
     settings
     star

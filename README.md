@@ -136,7 +136,9 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
 - Setting a persona for several accounts: every account row in the entry tree has a
   checkbox, and only account rows do, so a service or a persona cannot be caught up in the
   change. Ticking does not move the selection, and the ticks stay while other rows are
-  looked at. The *Set Persona* button next to the organize button opens the personas, with
+  looked at. The button before it ticks every account in the current view (the place chosen
+  in the sidebar and the search), and unticks them all while they are all ticked. The *Set
+  Persona* button next to the organize button opens the personas, with
   *(none)* first; after a confirmation that names the persona and the number of accounts,
   the ticked accounts get it and the ticks are cleared. It is how imported accounts, which
   arrive without a persona unless one was chosen at import, are sorted into personas. The

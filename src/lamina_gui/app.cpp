@@ -159,6 +159,7 @@ App::App()
       search_(base_.add<TextFieldC>(kit_, str::search_hint)),
       add_entry_(base_.add<ButtonC>(kit_, ButtonSpec{str::add, kit_.theme->entry_action, cfg_.icons.add})),
       organize_(base_.add<IconButtonC>(kit_, cfg_.icons.organize, false, str::organize)),
+      tick_all_(base_.add<IconButtonC>(kit_, cfg_.icons.tick_all, true, str::tick_all)),
       set_persona_(base_.add<IconButtonC>(kit_, cfg_.icons.set_persona, false, str::set_persona)),
       tree_(base_.add<ListView>(
           kit_, ListOptions{.columns = {{str::col_name, str::col_type, str::col_persona}, {2.0, 1.0, 1.0}},
@@ -453,6 +454,7 @@ void App::wire() {
     tree_.on_select = [this](const ListRow& row) { session_.select_entry(row.id); };
     tree_.on_check = [this](const ListRow& row) { session_.toggle_mark(row.id); };
     set_persona_.on_click = [this] { open_persona_menu(); };
+    tick_all_.on_change = [this](bool) { session_.mark_all(!session_.all_marked()); };
     tree_.on_toggle = [this](const ListRow& row) {
         if (!collapsed_.erase(row.id)) {
             collapsed_.insert(row.id);
@@ -524,7 +526,7 @@ NodePtr App::build_layout() {
     sidebar->padding(padding).spacing(t.control_gap).cross_align(stretch).fill_cross(true).fill_main(true);
 
     auto entry_bar = lm::layout::row(
-        {grow(search_.node()), add_entry_.node(), organize_.node(), set_persona_.node()});
+        {grow(search_.node()), add_entry_.node(), organize_.node(), tick_all_.node(), set_persona_.node()});
     entry_bar->spacing(t.control_gap).cross_align(center);
     auto entries = lm::layout::column({tabs_.node(), entry_bar, grow(tree_.node())});
     entries->padding(padding).spacing(t.gap).cross_align(stretch).fill_cross(true).fill_main(true);
@@ -702,6 +704,8 @@ void App::sync() {
     add_entry_.set_enabled(vault);
     organize_.set_enabled(vault);
     set_persona_.set_enabled(vault);
+    tick_all_.set_enabled(vault);
+    tick_all_.set_checked(session_.all_marked());
 
     const bool totp = session_.totp_shown();
     totp_.set_visible(totp);
