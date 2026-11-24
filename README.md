@@ -304,3 +304,8 @@ Tag chips in the entry sheet take the pointer only.
 
 The canonical design document is in the org repository:
 `claude-handover/cypherarx-design-final.md`.
+
+## License
+
+cypherarx-gui is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE).
+The licenses of the libraries it is built with are not listed yet.

@@ -299,3 +299,8 @@ lamina-ui の描画面・文字の配置・トークンの上に、ここで書�
 ## 設計
 
 設計の正典は組織リポジトリの `claude-handover/cypherarx-design-final.md` にあります。
+
+## ライセンス
+
+cypherarx-gui のライセンスは [Apache License 2.0](LICENSE) です。[NOTICE](NOTICE) も参照してください。
+ビルドに使うライブラリのライセンスの一覧は、まだありません。
