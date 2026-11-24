@@ -64,6 +64,7 @@ gui::SessionSettings session_settings(const Config& cfg) {
     gui::SessionSettings s;
     s.kdf_params = cfg.security.kdf_params;
     s.clipboard_clear_seconds = cfg.clipboard.clear_after_seconds;
+    s.away_poll_seconds = cfg.security.away_poll_seconds;
     s.category_indent = cfg.category_indent;
     return s;
 }
@@ -214,6 +215,41 @@ void App::notify(const std::string& text) {
 void App::save_preferences() {
     if (!gui::save_preferences(preferences_file_, preferences_)) {
         session_.report(str::preferences_not_saved);
+    }
+}
+
+void App::watch_away() {
+    if (!session_.watches_away()) {
+        away_watching_ = false;
+        return;
+    }
+    const auto now = gui::Session::Clock::now();
+    if (!away_watching_) {
+        away_watching_ = true;
+        resumed_ = false;
+        away_polled_ = now;
+        away_.poll();
+        return;
+    }
+    if (now - away_polled_ < std::chrono::duration<double>(cfg_.security.away_poll_seconds)) {
+        return;
+    }
+    away_polled_ = now;
+    const gui::platform::AwayState state = away_.poll();
+    resumed_ = resumed_ || state.resumed;
+    std::optional<gui::Away> reason;
+    if (state.screensaver) {
+        reason = gui::Away::screensaver;
+    } else if (state.screen_locked) {
+        reason = gui::Away::screen_locked;
+    } else if (state.disconnected) {
+        reason = gui::Away::user_switched;
+    } else if (resumed_) {
+        reason = gui::Away::resumed;
+    }
+    if (reason && session_.lock_for(clipboard_, *reason)) {
+        resumed_ = false;
+        locked();
     }
 }
 
@@ -890,6 +926,7 @@ Argb App::update(const lm::sdl3::Frame& frame) {
     if (session_.lock_if_due(clipboard_)) {
         locked();
     }
+    watch_away();
     if (dirty_ || session_.revision() != seen_revision_) {
         sync();
     }

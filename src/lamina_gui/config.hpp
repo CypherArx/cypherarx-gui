@@ -255,6 +255,7 @@ struct ClipboardConfig {
 struct SecurityConfig {
     KdfParams (*kdf_params)() = &KdfParams::moderate;
     KdfParams (*kdf_params_selftest)() = &KdfParams::interactive;
+    double away_poll_seconds = 2.0;
 };
 
 struct Limits {

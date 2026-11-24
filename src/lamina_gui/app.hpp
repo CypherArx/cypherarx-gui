@@ -18,6 +18,7 @@
 
 #include "model/preferences.hpp"
 #include "model/session.hpp"
+#include "platform/away.hpp"
 
 #include "lamina_gui/controls.hpp"
 #include "lamina_gui/list_view.hpp"
@@ -63,6 +64,7 @@ private:
     void choose_vault(gui::UnlockMode mode);
     void offer_last_vault();
     void locked();
+    void watch_away();
     void save_preferences();
     void notify(const std::string& text);
     void apply_theme(std::size_t index);
@@ -97,6 +99,10 @@ private:
     lm::motion::Animated theme_mix_;
     WindowClipboard clipboard_;
     gui::Session session_;
+    gui::platform::AwayWatch away_;
+    gui::Session::Clock::time_point away_polled_{};
+    bool resumed_ = false;
+    bool away_watching_ = false;
     Panel base_;
 
     PaneC& sidebar_pane_;

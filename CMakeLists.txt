@@ -83,6 +83,7 @@ add_executable(cypherarx_gui
   src/lamina_gui/select_field.cpp
   src/lamina_gui/sheet.cpp
   src/lamina_gui/sheets.cpp
+  src/platform/away_win32.cpp
   src/platform/file_dialog_win32.cpp
 )
 if(WIN32)
@@ -95,6 +96,8 @@ target_link_libraries(cypherarx_gui PRIVATE
   lamina::thorvg
   lamina::sdl3
   comdlg32
+  powrprof
+  wtsapi32
 )
 
 if(MSVC)

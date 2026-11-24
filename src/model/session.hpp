@@ -38,9 +38,12 @@ using ViaOptions = std::vector<std::pair<std::optional<std::int64_t>, std::strin
 
 enum class UnlockMode { Create, Open };
 
+enum class Away { screensaver, screen_locked, user_switched, resumed };
+
 struct SessionSettings {
     KdfParams (*kdf_params)() = &KdfParams::moderate;
     int clipboard_clear_seconds = 20;
+    double away_poll_seconds = 2.0;
     const char* category_indent = "    ";
     std::uint32_t totp_period_seconds = 30;
     std::size_t import_max_bytes = 16 * 1024 * 1024;
@@ -209,6 +212,8 @@ public:
 
     void note_activity(Clock::time_point now = Clock::now());
     bool lock_if_due(ClipboardPort& clipboard, Clock::time_point now = Clock::now());
+    bool watches_away() const;
+    bool lock_for(ClipboardPort& clipboard, Away reason);
 
     void tick(ClipboardPort& clipboard);
     std::optional<double> next_wake_seconds() const;

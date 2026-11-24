@@ -253,6 +253,26 @@ int run_selftest() {
         s.start_change_password(next_pw, pw);
         ok = expect(wait_rekey().has_value(), "change the master password back") && ok;
 
+        cypherarx::Settings away = s.vault_settings();
+        away.session_lock_on_screensaver = false;
+        ok = expect(s.set_vault_settings(away).has_value() && !s.watches_away() &&
+                        !s.lock_for(clipboard, gui::Away::screen_locked) && s.has_vault(),
+                    "no lock on a locked screen when the setting is off") &&
+             ok;
+        away.session_lock_on_screensaver = true;
+        ok = expect(s.set_vault_settings(away).has_value() && s.watches_away() &&
+                        s.lock_for(clipboard, gui::Away::screen_locked) && !s.has_vault() &&
+                        !s.watches_away(),
+                    "the vault locks when the screen is locked") &&
+             ok;
+        ok = expect(!s.lock_for(clipboard, gui::Away::resumed), "nothing to lock without a vault") && ok;
+        s.start_unlock(gui::UnlockMode::Open, path, pw);
+        std::optional<gui::Status> reopened;
+        while (!(reopened = s.poll_unlock(clipboard))) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        ok = expect(reopened->has_value() && s.has_vault(), "reopen after the lock") && ok;
+
         const auto t0 = gui::Session::Clock::now();
         s.note_activity(t0);
         ok = expect(!s.lock_if_due(clipboard, t0 + std::chrono::minutes(2)) && s.has_vault(),
@@ -289,7 +309,7 @@ int run_selftest() {
          ok;
     fs::remove_all(prefs.parent_path(), ec);
     if (ok) {
-        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, settings, import, rotation, password change, preferences)\n";
+        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, settings, import, rotation, password change, locking, preferences)\n";
     }
     return ok ? 0 : 1;
 }

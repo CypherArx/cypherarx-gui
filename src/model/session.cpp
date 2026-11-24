@@ -1243,6 +1243,34 @@ bool Session::lock_if_due(ClipboardPort& clipboard, Clock::time_point now) {
     return true;
 }
 
+bool Session::watches_away() const {
+    return vault_.has_value() && vault_settings_.session_lock_on_screensaver;
+}
+
+bool Session::lock_for(ClipboardPort& clipboard, Away reason) {
+    if (!watches_away() || rotating()) {
+        return false;
+    }
+    const char* why = text::locked_screensaver;
+    switch (reason) {
+    case Away::screensaver:
+        break;
+    case Away::screen_locked:
+        why = text::locked_screen;
+        break;
+    case Away::user_switched:
+        why = text::locked_user_switched;
+        break;
+    case Away::resumed:
+        why = text::locked_resumed;
+        break;
+    }
+    close_vault(clipboard);
+    status_ = why;
+    touch();
+    return true;
+}
+
 void Session::tick(ClipboardPort& clipboard) {
     clipboard_.tick(clipboard);
 }
@@ -1261,6 +1289,9 @@ std::optional<double> Session::next_wake_seconds() const {
             std::max(0.0, std::chrono::duration<double>(from + std::chrono::minutes(minutes) - now).count());
         wake = wake ? std::min(*wake, seconds) : seconds;
     };
+    if (watches_away()) {
+        wake = wake ? std::min(*wake, settings_.away_poll_seconds) : settings_.away_poll_seconds;
+    }
     until(last_activity_, vault_settings_.session_lock_idle_minutes);
     until(unlocked_at_, vault_settings_.session_duration_minutes);
     return wake;
