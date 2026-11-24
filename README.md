@@ -305,8 +305,9 @@ Tag chips in the entry sheet take the pointer only.
 
 ## Design
 
-The canonical design document is in the org repository:
-`claude-handover/cypherarx-design-final.md`.
+The design (purpose and principles, cryptography, data model) is in the core's `docs/`:
+`external/cypherarx-core/docs/design.md` and the documents it lists. Section numbers (§)
+elsewhere in this README refer to an earlier, unpublished design document.
 
 ## License
 

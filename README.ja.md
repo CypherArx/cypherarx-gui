@@ -300,7 +300,9 @@ lamina-ui の描画面・文字の配置・トークンの上に、ここで書�
 
 ## 設計
 
-設計の正典は組織リポジトリの `claude-handover/cypherarx-design-final.md` にあります。
+設計（目的と原則、暗号、データモデル）は、コアの `docs/` にあります。
+`external/cypherarx-core/docs/design.ja.md` と、そこに挙げた文書です。この README のほかの
+場所にある節番号（§）は、以前の、公開していない設計文書のものです。
 
 ## ライセンス
 
