@@ -107,7 +107,7 @@ class ImportSheet final : public Sheet {
 public:
     ImportSheet(const Kit& kit, Host& host);
 
-    std::function<void(const std::filesystem::path&, std::optional<std::int64_t>)> on_import;
+    std::function<void(const std::filesystem::path&, std::optional<std::int64_t>, bool)> on_import;
     void open(std::filesystem::path file);
 
 protected:
@@ -123,6 +123,8 @@ private:
     LabelC& folder_;
     SelectField& persona_;
     LabelC& hint_;
+    CheckC& erase_;
+    LabelC& erase_hint_;
     ButtonC& cancel_;
     ButtonC& ok_;
 };

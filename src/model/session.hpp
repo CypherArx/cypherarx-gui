@@ -130,6 +130,7 @@ public:
                                std::span<const std::uint8_t> replacement);
     bool rotating() const { return rotate_.valid(); }
     std::optional<Status> poll_rotate();
+    Status erase_source(const std::filesystem::path& file);
     Outcome<ImportSummary> import_csv(const std::filesystem::path& file,
                                       std::optional<std::int64_t> persona = std::nullopt);
 

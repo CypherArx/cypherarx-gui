@@ -258,6 +258,8 @@ ImportSheet::ImportSheet(const Kit& kit, Host& host)
       folder_(panel_.add<LabelC>(kit, file_folder(kit))),
       persona_(panel_.add<SelectField>(kit, str::persona, &ThemePreset::sheet)),
       hint_(panel_.add<LabelC>(kit, muted(str::import_persona_hint, true))),
+      erase_(panel_.add<CheckC>(kit, str::import_erase)),
+      erase_hint_(panel_.add<LabelC>(kit, muted(str::import_erase_hint, true))),
       cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
       ok_(panel_.add<ButtonC>(kit, ButtonSpec{str::import_action, ButtonStyle::filled})) {
     ok_.on_click = [this] { submit(); };
@@ -267,7 +269,8 @@ ImportSheet::ImportSheet(const Kit& kit, Host& host)
 }
 
 NodePtr ImportSheet::body() {
-    return vcol(kit_, {name_.node(), folder_.node(), persona_.node(), hint_.node(),
+    return vcol(kit_, {name_.node(), folder_.node(), persona_.node(), hint_.node(), erase_.node(),
+                       erase_hint_.node(),
                        hrow(kit_, {lm::layout::flexible_space(), cancel_.node(), ok_.node()})});
 }
 
@@ -276,6 +279,7 @@ void ImportSheet::open(std::filesystem::path file) {
     show_file(name_, folder_, file_);
     personas_ = host_.session().entry_choices().personas;
     persona_.set_items(labels(personas_));
+    erase_.set_checked(false);
     show();
     panel_.focus(persona_);
     host_.present(*this);
@@ -285,7 +289,7 @@ void ImportSheet::submit() {
     const std::int64_t id = id_at(personas_, persona_.index());
     close();
     if (on_import) {
-        on_import(file_, id != 0 ? std::optional<std::int64_t>(id) : std::nullopt);
+        on_import(file_, id != 0 ? std::optional<std::int64_t>(id) : std::nullopt, erase_.checked());
     }
 }
 

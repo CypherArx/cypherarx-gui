@@ -180,6 +180,16 @@ inline constexpr const char* import_persona_hint =
     "Every account in the file gets this persona. Accounts that are already in the vault are not changed.";
 inline constexpr const char* import_reminder =
     "The CSV file still holds every password as plain text. Delete it once the import looks right.";
+inline constexpr const char* import_erase = "Delete the CSV file after a successful import";
+inline constexpr const char* import_erase_hint =
+    "The file holds every password as plain text. It is overwritten and removed, and does not go to the "
+    "recycle bin.";
+inline constexpr const char* erase_source = "Delete CSV";
+inline constexpr const char* source_erased = "The CSV file was overwritten and deleted.";
+inline constexpr const char* erase_not_a_file = "It is not a regular file.";
+inline constexpr const char* erase_write_failed = "The file could not be overwritten. It is still there.";
+inline constexpr const char* erase_remove_failed =
+    "The file was overwritten with zeros but could not be removed.";
 inline constexpr const char* vault_settings_saved = "Vault settings saved.";
 inline constexpr const char* rotate_key = "Rotate key";
 inline constexpr const char* key_rotated = "The data key was rotated.";

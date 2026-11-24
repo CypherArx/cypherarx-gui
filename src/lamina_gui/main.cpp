@@ -138,7 +138,8 @@ int run_selftest() {
             out << "name,url,username,password\nImported,https://imported.example,me,pw\n";
         }
         const auto imported = s.import_csv(csv, persona);
-        fs::remove(csv, ec);
+        ok = expect(s.erase_source(csv).has_value() && !fs::exists(csv), "the imported file is erased") && ok;
+        ok = expect(!s.erase_source(csv).has_value(), "erasing a missing file is refused") && ok;
         ok = expect(imported.has_value() && imported->services == 1 && imported->accounts == 1 &&
                         imported->fields == 3,
                     "import") &&

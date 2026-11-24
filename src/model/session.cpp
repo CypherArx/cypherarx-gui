@@ -11,6 +11,7 @@
 
 #include <sodium.h>
 
+#include "cypherarx/erase.hpp"
 #include "cypherarx/passgen.hpp"
 #include "cypherarx/totp.hpp"
 
@@ -237,6 +238,28 @@ Status Session::merge_service(std::int64_t source, std::int64_t target) {
     reload_entries();
     reload_fields();
     status_ = text::services_merged;
+    touch();
+    return {};
+}
+
+Status Session::erase_source(const std::filesystem::path& file) {
+    const auto erased = erase_file(file);
+    if (!erased) {
+        const char* reason = text::err_unexpected;
+        switch (erased.error()) {
+        case EraseError::NotAFile:
+            reason = text::erase_not_a_file;
+            break;
+        case EraseError::WriteFailed:
+            reason = text::erase_write_failed;
+            break;
+        case EraseError::RemoveFailed:
+            reason = text::erase_remove_failed;
+            break;
+        }
+        return fail(std::string(text::erase_source) + ": " + reason);
+    }
+    status_ = text::source_erased;
     touch();
     return {};
 }

@@ -71,7 +71,7 @@ private:
     void open_persona_menu();
     void open_vault_settings();
     void import_csv();
-    void run_import(const std::filesystem::path& file, std::optional<std::int64_t> persona);
+    void run_import(const std::filesystem::path& file, std::optional<std::int64_t> persona, bool erase);
     void rotate_key();
     void change_password();
     void open_add_menu();

@@ -373,13 +373,19 @@ void App::import_csv() {
     }
 }
 
-void App::run_import(const std::filesystem::path& file, std::optional<std::int64_t> persona) {
+void App::run_import(const std::filesystem::path& file, std::optional<std::int64_t> persona, bool erase) {
     const auto summary = session_.import_csv(file, persona);
     if (!summary) {
         message(summary.error().message);
         return;
     }
-    message(session_.status() + "\n\n" + str::import_reminder);
+    const std::string result = session_.status();
+    if (!erase) {
+        message(result + "\n\n" + str::import_reminder);
+        return;
+    }
+    const auto erased = session_.erase_source(file);
+    message(result + "\n\n" + (erased ? session_.status() : erased.error().message));
 }
 
 void App::rotate_key() {
@@ -450,7 +456,8 @@ void App::wire() {
         }
     };
     import_sheet_.on_import = [this](const std::filesystem::path& file,
-                                     std::optional<std::int64_t> persona) { run_import(file, persona); };
+                                     std::optional<std::int64_t> persona,
+                                     bool erase) { run_import(file, persona, erase); };
     password_sheet_.on_started = [this] {
         busy_sheet_.open(session_.unlock_mode() == gui::UnlockMode::Create ? str::new_vault
                                                                            : str::open_vault,

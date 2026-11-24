@@ -219,9 +219,13 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
     field and the row's URL as its login URL, and one account per row, whose fields are the user name
     (*Email* or *ID* by its shape), the password and the TOTP secret. After the file is chosen a sheet asks for a persona; every
     account in the file gets it, and accounts already in the vault are not changed. Importing the same file again
-    adds nothing. The result is shown with a reminder that the CSV still holds every
-    password as plain text; the application does not delete the file. KeePass XML and
-    1Password 1PUX are not read.
+    adds nothing. The sheet also has a checkbox, off by default, to delete the CSV after a
+    successful import: the file is then overwritten with zeros and removed (the core's
+    `erase_file`; it does not go to the recycle bin, and what the overwrite cannot reach is
+    listed in the core's README), and the result says so. Without the checkbox the result
+    is shown with a reminder that the CSV still holds every password as plain text. A
+    failed import leaves the file untouched either way. KeePass XML and 1Password 1PUX are
+    not read.
   - *Rotate key*: after a confirmation and the master password, every stored value is
     encrypted again with a new data key, on a worker thread behind the spinner.
   - *Change master password*: a sheet asks for the current password and the new one twice.
