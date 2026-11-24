@@ -212,7 +212,7 @@ struct SpinnerConfig {
 
 struct IconConfig {
     lamina::icons::Symbol favorite = res::icons::star;
-    lamina::icons::Symbol all_items = res::icons::inventory_2;
+    lamina::icons::Symbol all_entries = res::icons::inventory_2;
     lamina::icons::Symbol recent = res::icons::history;
     lamina::icons::Symbol category = res::icons::folder;
     lamina::icons::Symbol tag = res::icons::sell;

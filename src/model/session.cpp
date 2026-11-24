@@ -895,7 +895,7 @@ Status Session::commit_entry(EntryDraft& d) {
     }
     const EntryTraits kind = traits(d.type);
     if (d.label.empty() && !kind.name_optional) {
-        return fail(text::label_required);
+        return fail(text::name_required);
     }
     Entry e = d.editing.value_or(Entry{});
     e.label = d.label;

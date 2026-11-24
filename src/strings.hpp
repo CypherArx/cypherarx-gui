@@ -142,7 +142,7 @@ inline constexpr const char* name_optional = "Name (optional)";
 inline constexpr const char* account_name_hint =
     "Leave the name empty to show the persona or the service instead.";
 inline constexpr const char* no_persona = "(no persona)";
-inline constexpr const char* all_items = "All items";
+inline constexpr const char* all_entries = "All entries";
 inline constexpr const char* favorites = "Favorites";
 inline constexpr const char* recently_used = "Recently used";
 inline constexpr const char* used_fmt = "used %zu times";
@@ -164,7 +164,7 @@ inline constexpr const char* settings_session = "Session length (minutes)";
 inline constexpr const char* settings_idle = "Lock after idle for (minutes, 0 = off)";
 inline constexpr const char* settings_keyring = "Keep the session in the OS keyring";
 inline constexpr const char* settings_screensaver =
-    "Lock when the screensaver starts, the screen is locked, the user is switched or the PC wakes up";
+    "Lock when the screensaver starts, the screen is locked, the user is switched or the computer wakes up";
 inline constexpr const char* settings_export = "Ask for the password before an export";
 inline constexpr const char* settings_note =
     "These are stored in the vault, encrypted. The access log, the idle lock and the lock on the "
@@ -173,7 +173,7 @@ inline constexpr const char* locked_idle_fmt = "Locked after %d minutes without 
 inline constexpr const char* locked_screensaver = "Locked: the screensaver started.";
 inline constexpr const char* locked_screen = "Locked: the screen was locked.";
 inline constexpr const char* locked_user_switched = "Locked: the user was switched.";
-inline constexpr const char* locked_resumed = "Locked: the PC woke up from sleep.";
+inline constexpr const char* locked_resumed = "Locked: the computer woke up from sleep.";
 inline constexpr const char* settings_not_numbers = "Enter whole numbers.";
 inline constexpr const char* confirm_rotate =
     "Rotate the data key? Every stored value is encrypted again with a new key. The master password is "

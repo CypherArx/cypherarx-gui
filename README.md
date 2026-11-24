@@ -151,8 +151,8 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   service to merge into; that one keeps its name, takes this one's accounts and URLs, and
   this one is removed. It is for services that turned out to be the same, such as one made
   by hand and one made by an import.
-- The sidebar picks one place at a time: all items, the favorites, one category (with its
-  sub-categories) or one tag, so only one of its rows is ever highlighted. Search (label /
+- The sidebar picks one place at a time: all entries, the favorites, one category (with its
+  sub-categories) or one tag, so only one of its rows is ever highlighted. Search (name /
   display name / URL, ASCII case-insensitive) narrows that further. Matching entries keep their
   ancestors and descendants in the tree; ancestors that do not match themselves are dimmed.
 - Add / edit / delete entries. Add opens a menu of what to add (Service, Persona, Account,
@@ -218,7 +218,7 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   waiting); the window reports input and wakes itself when a lock is next due. With the
   *lock on screensaver* setting on (the default), the vault also closes when the
   screensaver starts, the screen is locked, the user is switched or the session is
-  disconnected, and when the PC wakes up from sleep. `platform/away.hpp` reads these from
+  disconnected, and when the computer wakes up from sleep. `platform/away.hpp` reads these from
   the OS (Windows: the screensaver flag, the session state and the resume notification),
   the window asks it every two seconds while a vault with the setting is open, and the
   model decides (`Session::lock_for`). Only the model's part is covered by the smoke test.

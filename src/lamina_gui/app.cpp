@@ -657,7 +657,7 @@ void App::sync_sidebar() {
         row.selected = scope == gui::Scope{kind, id};
         rows.push_back(std::move(row));
     };
-    item(Kind::all, 0, str::all_items, cfg_.icons.all_items);
+    item(Kind::all, 0, str::all_entries, cfg_.icons.all_entries);
     item(Kind::favorites, 0, str::favorites, cfg_.icons.favorite);
     item(Kind::recent, 0, str::recently_used, cfg_.icons.recent);
     const gui::IdLabels categories = session_.flat_categories();

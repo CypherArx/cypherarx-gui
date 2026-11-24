@@ -493,7 +493,7 @@ void MergeSheet::submit() {
 EntrySheet::EntrySheet(const Kit& kit, Host& host)
     : Sheet(kit, str::add_entry, kit.cfg->sheet.form_width),
       host_(host),
-      label_(panel_.add<TextFieldC>(kit, str::label)),
+      label_(panel_.add<TextFieldC>(kit, str::name)),
       name_(panel_.add<TextFieldC>(kit, str::name_optional)),
       name_hint_(panel_.add<LabelC>(kit, muted(str::account_name_hint, true))),
       type_(panel_.add<SelectField>(kit, str::type, &ThemePreset::sheet)),
