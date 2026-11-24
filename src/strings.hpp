@@ -183,13 +183,13 @@ inline constexpr const char* import_action = "Import";
 inline constexpr const char* import_persona_hint =
     "Every account in the file gets this persona. Accounts that are already in the vault are not changed.";
 inline constexpr const char* import_reminder =
-    "The CSV file still holds every password as plain text. Delete it once the import looks right.";
-inline constexpr const char* import_erase = "Delete the CSV file after a successful import";
+    "The file still holds every password as plain text. Delete it once the import looks right.";
+inline constexpr const char* import_erase = "Delete the file after a successful import";
 inline constexpr const char* import_erase_hint =
     "The file holds every password as plain text. It is overwritten and removed, and does not go to the "
     "recycle bin.";
-inline constexpr const char* erase_source = "Delete CSV";
-inline constexpr const char* source_erased = "The CSV file was overwritten and deleted.";
+inline constexpr const char* erase_source = "Delete file";
+inline constexpr const char* source_erased = "The file was overwritten and deleted.";
 inline constexpr const char* erase_not_a_file = "It is not a regular file.";
 inline constexpr const char* erase_write_failed = "The file could not be overwritten. It is still there.";
 inline constexpr const char* erase_remove_failed =
@@ -234,14 +234,18 @@ inline constexpr const char* kdf_hint =
     "Seconds to open the vault on this computer, and years to guess this password. A slower key makes every "
     "guess slower too. The years assume an attacker with one computer like this one: read them as a scale.";
 inline constexpr const char* access_log = "Access log";
-inline constexpr const char* import_csv = "Import CSV";
+inline constexpr const char* import_file = "Import File";
 inline constexpr const char* imported_fmt =
     "Imported %zu accounts into %zu new services (%zu fields). Skipped: %zu already present, %zu with nothing to store.";
 inline constexpr const char* import_cannot_read = "Could not read the file.";
 inline constexpr const char* import_too_large = "The file is too large to import.";
 inline constexpr const char* import_empty = "The file is empty.";
 inline constexpr const char* import_no_secret_column = "The file has no password or TOTP column.";
-inline constexpr const char* import_malformed = "The file is not valid CSV.";
+inline constexpr const char* import_malformed = "The file is damaged or cut short.";
+inline constexpr const char* import_protected =
+    "The values in this XML are still encrypted. Use the XML export of KeePass instead.";
+inline constexpr const char* import_unsupported =
+    "This is not a CSV, KeePass XML or 1Password 1PUX export that can be read.";
 inline constexpr const char* import_password_label = "Password";
 inline constexpr const char* import_totp_label = "TOTP";
 inline constexpr const char* import_password_type = "password";

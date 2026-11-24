@@ -138,9 +138,33 @@ int run_selftest() {
             std::ofstream out(csv, std::ios::binary);
             out << "name,url,username,password\nImported,https://imported.example,me,pw\n";
         }
-        const auto imported = s.import_csv(csv, persona);
+        const auto imported = s.import_file(csv, persona);
         ok = expect(s.erase_source(csv).has_value() && !fs::exists(csv), "the imported file is erased") && ok;
         ok = expect(!s.erase_source(csv).has_value(), "erasing a missing file is refused") && ok;
+        const fs::path xml = fs::temp_directory_path() / "cypherarx_gui_selftest_import.xml";
+        const auto write_xml = [&](const char* value_attributes) {
+            std::ofstream out(xml, std::ios::binary);
+            out << "<KeePassFile><Root><Group><Entry>"
+                   "<String><Key>Title</Key><Value>Kept</Value></String>"
+                   "<String><Key>URL</Key><Value>https://kept.example</Value></String>"
+                   "<String><Key>UserName</Key><Value>keeper</Value></String>"
+                   "<String><Key>Password</Key><Value"
+                << value_attributes << ">pw&amp;2</Value></String></Entry></Group></Root></KeePassFile>";
+        };
+        write_xml("");
+        const auto from_xml = s.import_file(xml, std::nullopt);
+        ok = expect(from_xml.has_value() && from_xml->services == 1 && from_xml->accounts == 1 &&
+                        from_xml->fields == 3,
+                    "import of KeePass XML") &&
+             ok;
+        write_xml(" Protected=\"True\"");
+        ok = expect(!s.import_file(xml, std::nullopt).has_value(), "XML with encrypted values is refused") && ok;
+        {
+            std::ofstream out(xml, std::ios::binary);
+            out << "PK not an archive";
+        }
+        ok = expect(!s.import_file(xml, std::nullopt).has_value(), "a damaged archive is refused") && ok;
+        fs::remove(xml);
         ok = expect(imported.has_value() && imported->services == 1 && imported->accounts == 1 &&
                         imported->fields == 3,
                     "import") &&

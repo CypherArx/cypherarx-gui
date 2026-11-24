@@ -337,8 +337,8 @@ Status Session::erase_source(const std::filesystem::path& file) {
     return {};
 }
 
-Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file,
-                                           std::optional<std::int64_t> persona) {
+Outcome<ImportSummary> Session::import_file(const std::filesystem::path& file,
+                                            std::optional<std::int64_t> persona) {
     if (!vault_) {
         return fail(text::no_vault);
     }
@@ -360,7 +360,38 @@ Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file,
     if (!in || static_cast<std::size_t>(in.gcount()) != data.size()) {
         return fail(text::import_cannot_read);
     }
-    const auto logins = parse_logins_csv({text_data, data.size()});
+    const std::span<char> bytes{text_data, data.size()};
+    std::optional<Secret> unpacked;
+    std::expected<std::vector<ImportedLogin>, ImportError> logins;
+    switch (import_format(bytes)) {
+    case ImportFormat::Csv:
+        logins = parse_logins_csv(bytes);
+        break;
+    case ImportFormat::KeePassXml:
+        logins = parse_logins_keepass_xml(bytes);
+        break;
+    case ImportFormat::OnePux: {
+        const auto unpacked_size = onepux_data_size(bytes);
+        if (!unpacked_size) {
+            logins = std::unexpected(unpacked_size.error());
+            break;
+        }
+        if (*unpacked_size > settings_.import_max_bytes) {
+            return fail(text::import_too_large);
+        }
+        if (*unpacked_size == 0) {
+            return fail(text::import_empty);
+        }
+        unpacked.emplace(*unpacked_size);
+        const std::span<char> json{reinterpret_cast<char*>(unpacked->data()), unpacked->size()};
+        if (const auto extracted = onepux_extract_data(bytes, json); !extracted) {
+            logins = std::unexpected(extracted.error());
+        } else {
+            logins = parse_logins_onepux(json);
+        }
+        break;
+    }
+    }
     if (!logins) {
         switch (logins.error()) {
         case ImportError::NoHeader:
@@ -369,6 +400,10 @@ Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file,
             return fail(text::import_no_secret_column);
         case ImportError::Malformed:
             return fail(text::import_malformed);
+        case ImportError::Protected:
+            return fail(text::import_protected);
+        case ImportError::Unsupported:
+            return fail(text::import_unsupported);
         }
         return fail(text::err_unexpected);
     }
@@ -383,7 +418,7 @@ Outcome<ImportSummary> Session::import_csv(const std::filesystem::path& file,
                   .url_label = text::import_url_label,
                   .persona_id = persona});
     if (!summary) {
-        return fail(failure(text::import_csv, summary.error()).message);
+        return fail(failure(text::import_file, summary.error()).message);
     }
     reload_entries();
     status_ = format(text::imported_fmt, summary->accounts, summary->services, summary->fields,

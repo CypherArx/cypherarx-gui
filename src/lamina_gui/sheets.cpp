@@ -252,7 +252,7 @@ void SettingsSheet::submit() {
 }
 
 ImportSheet::ImportSheet(const Kit& kit, Host& host)
-    : Sheet(kit, str::import_csv, kit.cfg->sheet.form_width),
+    : Sheet(kit, str::import_file, kit.cfg->sheet.form_width),
       host_(host),
       name_(panel_.add<LabelC>(kit, file_name(kit))),
       folder_(panel_.add<LabelC>(kit, file_folder(kit))),

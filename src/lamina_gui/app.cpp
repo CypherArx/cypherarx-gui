@@ -354,12 +354,12 @@ void App::open_vault_menu() {
     }
     lm::widgets::MenuOptions options;
     options.items.push_back({str::vault_settings, lm::icons::Icon{kit_.icons, cfg_.icons.vault_settings}});
-    options.items.push_back({str::import_csv, lm::icons::Icon{kit_.icons, cfg_.icons.import_csv}});
+    options.items.push_back({str::import_file, lm::icons::Icon{kit_.icons, cfg_.icons.import_file}});
     options.items.push_back({str::rotate_key, lm::icons::Icon{kit_.icons, cfg_.icons.rotate_key}});
     options.items.push_back(
         {str::change_password, lm::icons::Icon{kit_.icons, cfg_.icons.change_password}});
     auto menu = std::make_unique<MenuModal>(kit_, std::move(options), [this](std::size_t index) {
-        const std::array<void (App::*)(), 4> actions{&App::open_vault_settings, &App::import_csv,
+        const std::array<void (App::*)(), 4> actions{&App::open_vault_settings, &App::import_file,
                                                      &App::rotate_key, &App::change_password};
         if (index < actions.size()) {
             (this->*actions[index])();
@@ -401,8 +401,8 @@ void App::open_vault_settings() {
     settings_sheet_.open();
 }
 
-void App::import_csv() {
-    const gui::platform::FileDialogOptions options{cfg_.csv_filter, cfg_.csv_extension};
+void App::import_file() {
+    const gui::platform::FileDialogOptions options{cfg_.import_filter, cfg_.import_extension};
     const auto file = gui::platform::choose_file_to_open(options);
     base_.cancel();
     if (file) {
@@ -411,7 +411,7 @@ void App::import_csv() {
 }
 
 void App::run_import(const std::filesystem::path& file, std::optional<std::int64_t> persona, bool erase) {
-    const auto summary = session_.import_csv(file, persona);
+    const auto summary = session_.import_file(file, persona);
     if (!summary) {
         message(summary.error().message);
         return;

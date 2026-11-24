@@ -222,18 +222,24 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   the OS (Windows: the screensaver flag, the session state and the resume notification),
   the window asks it every two seconds while a vault with the setting is open, and the
   model decides (`Session::lock_for`). Only the model's part is covered by the smoke test.
-  - *Import CSV*: reads a browser's or a password manager's CSV export into guarded memory
-    and adds one service per site, found by any of its URLs or made with the site as its URL
-    field and the row's URL as its login URL, and one account per row, whose fields are the user name
+  - *Import File*: reads an export into guarded memory: a browser's or a password
+    manager's CSV, the XML that KeePass exports, or a 1Password 1PUX archive. The format is
+    told from the file's first bytes, not from its name (the core's `import_format`). It
+    adds one service per site, found by any of its URLs or made with the site as its URL
+    field and the row's URL as its login URL, and one account per login, whose fields are the user name
     (*Email* or *ID* by its shape), the password and the TOTP secret. After the file is chosen a sheet asks for a persona; every
     account in the file gets it, and accounts already in the vault are not changed. Importing the same file again
-    adds nothing. The sheet also has a checkbox, off by default, to delete the CSV after a
+    adds nothing. The sheet also has a checkbox, off by default, to delete the file after a
     successful import: the file is then overwritten with zeros and removed (the core's
     `erase_file`; it does not go to the recycle bin, and what the overwrite cannot reach is
     listed in the core's README), and the result says so. Without the checkbox the result
-    is shown with a reminder that the CSV still holds every password as plain text. A
-    failed import leaves the file untouched either way. KeePass XML and 1Password 1PUX are
-    not read.
+    is shown with a reminder that the file still holds every password as plain text. A
+    failed import leaves the file untouched either way. What each format gives and leaves
+    out (the history and the recycle bin of KeePass, the attachments of 1Password) is in
+    the core's README. The file is read whole, and both the file and the unpacked data of
+    a 1PUX archive must fit in 16 MiB each, so an archive with large attachments is
+    refused as too large. **The XML and 1PUX paths have been tried on screen with files
+    made after the formats, not with files exported by KeePass or 1Password.**
   - *Rotate key*: after a confirmation and the master password, every stored value is
     encrypted again with a new data key, on a worker thread behind the spinner.
   - *Change master password*: a sheet asks for the current password and the new one twice.
