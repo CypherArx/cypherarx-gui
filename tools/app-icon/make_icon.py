@@ -2,101 +2,178 @@ import argparse
 import pathlib
 import struct
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
-CANVAS = 1024
+GRID = 192
+SUPERSAMPLE = 8
 ICON_SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256]
 PREVIEW_SIZE = 256
 PIXELS_SIZE = 96
+SHEET_SCALE_LIMIT = 128
+SHEET_GAP = 24
 
-TILE_COLOR = "#0b0d12"
-TILE_EDGE_COLOR = "#343a46"
-CITADEL_COLOR = "#8fb0ee"
+PALETTES = {
+    "ui": {"ground": "#000000", "edge": "#444850", "mark": "#e2e5ef"},
+    "amber": {"ground": "#16171a", "edge": "#30333b", "mark": "#ffb224"},
+}
+DEFAULT_PALETTE = "ui"
 
-TILE_INSET = 48
-TILE_RADIUS = 212
-TILE_EDGE_WIDTH = 20
+TILE_RADIUS = 42
+TILE_EDGE_WIDTH = 2.5
 
-WALL_LEFT = 296
-WALL_RIGHT = 728
-WALL_TOP = 404
-WALL_BOTTOM = 772
-WALL_RADIUS = 44
-MERLON_TOP = 284
-MERLON_COUNT = 3
-MERLON_GAP = 48
+TOWER_LEFT = 32
+TOWER_RIGHT = 160
+CROWN_TOP = 8
+CROWN_BOTTOM = 58
+CROWN_RADIUS = 4
+NECK_TOP = 52
+NECK_BOTTOM = 76
+NECK_INSET = 8
+BODY_TOP = 70
+BODY_INSET = 20
+BODY_BOTTOM = 184
+CENTER_X = 96
 
-KEYHOLE_CENTER_Y = 548
-KEYHOLE_RADIUS = 58
-KEYHOLE_STEM_TOP_HALF_WIDTH = 30
-KEYHOLE_STEM_BOTTOM_HALF_WIDTH = 52
-KEYHOLE_STEM_BOTTOM = 690
+DETAILED = {
+    "scale": 0.74,
+    "gaps": [(56, 72), (88, 104), (120, 136)],
+    "gap_depth": 32,
+    "keyhole": {"y": 110, "radius": 15, "top": 6, "bottom": 12, "foot": 152},
+}
+SIMPLIFIED = {
+    "scale": 0.8,
+    "gaps": [(63, 81), (111, 129)],
+    "gap_depth": 34,
+    "keyhole": {"y": 112, "radius": 20, "top": 8, "bottom": 16, "foot": 164},
+}
+DETAILED_FROM = 48
+
+PIXEL_SIZE = 16
+PIXEL_ROWS = [
+    "................",
+    "..###.####.###..",
+    "..###.####.###..",
+    "..############..",
+    "..############..",
+    "...##########...",
+    "....########....",
+    "....########....",
+    "....########....",
+    "...####..####...",
+    "...####..####...",
+    "...####..####...",
+    "...####..####...",
+    "..############..",
+    "..############..",
+    "................",
+]
 
 
-def draw_icon():
-    image = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle(
-        (TILE_INSET, TILE_INSET, CANVAS - TILE_INSET, CANVAS - TILE_INSET),
-        radius=TILE_RADIUS,
-        fill=TILE_COLOR,
-        outline=TILE_EDGE_COLOR,
-        width=TILE_EDGE_WIDTH,
-    )
+def rgba(colour):
+    return tuple(int(colour[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
 
-    draw.rounded_rectangle(
-        (WALL_LEFT, WALL_TOP, WALL_RIGHT, WALL_BOTTOM),
-        radius=WALL_RADIUS,
-        fill=CITADEL_COLOR,
-        corners=(False, False, True, True),
-    )
-    merlon_width = (WALL_RIGHT - WALL_LEFT - MERLON_GAP * (MERLON_COUNT - 1)) / MERLON_COUNT
-    for i in range(MERLON_COUNT):
-        left = WALL_LEFT + i * (merlon_width + MERLON_GAP)
-        draw.rectangle((left, MERLON_TOP, left + merlon_width, WALL_TOP + 1), fill=CITADEL_COLOR)
 
-    center_x = (WALL_LEFT + WALL_RIGHT) / 2
-    draw.ellipse(
-        (
-            center_x - KEYHOLE_RADIUS,
-            KEYHOLE_CENTER_Y - KEYHOLE_RADIUS,
-            center_x + KEYHOLE_RADIUS,
-            KEYHOLE_CENTER_Y + KEYHOLE_RADIUS,
-        ),
-        fill=TILE_COLOR,
-    )
-    draw.polygon(
-        (
-            (center_x - KEYHOLE_STEM_TOP_HALF_WIDTH, KEYHOLE_CENTER_Y),
-            (center_x + KEYHOLE_STEM_TOP_HALF_WIDTH, KEYHOLE_CENTER_Y),
-            (center_x + KEYHOLE_STEM_BOTTOM_HALF_WIDTH, KEYHOLE_STEM_BOTTOM),
-            (center_x - KEYHOLE_STEM_BOTTOM_HALF_WIDTH, KEYHOLE_STEM_BOTTOM),
-        ),
-        fill=TILE_COLOR,
-    )
+def tower(variant):
+    s = SUPERSAMPLE
+    image = Image.new("L", (GRID * s, GRID * s), 0)
+    d = ImageDraw.Draw(image)
+
+    def polygon(points, fill=255):
+        d.polygon([(x * s, y * s) for x, y in points], fill=fill)
+
+    d.rounded_rectangle((TOWER_LEFT * s, CROWN_TOP * s, TOWER_RIGHT * s, CROWN_BOTTOM * s), CROWN_RADIUS * s, fill=255)
+    for left, right in variant["gaps"]:
+        d.rectangle((left * s, 0, right * s, variant["gap_depth"] * s), fill=0)
+    polygon([(TOWER_LEFT + NECK_INSET, NECK_TOP), (TOWER_RIGHT - NECK_INSET, NECK_TOP),
+             (TOWER_RIGHT - BODY_INSET, NECK_BOTTOM), (TOWER_LEFT + BODY_INSET, NECK_BOTTOM)])
+    polygon([(TOWER_LEFT + BODY_INSET, BODY_TOP), (TOWER_RIGHT - BODY_INSET, BODY_TOP), (TOWER_RIGHT, BODY_BOTTOM),
+             (TOWER_LEFT, BODY_BOTTOM)])
+    k = variant["keyhole"]
+    d.ellipse(((CENTER_X - k["radius"]) * s, (k["y"] - k["radius"]) * s, (CENTER_X + k["radius"]) * s,
+               (k["y"] + k["radius"]) * s), fill=0)
+    polygon([(CENTER_X - k["top"], k["y"]), (CENTER_X + k["top"], k["y"]), (CENTER_X + k["bottom"], k["foot"]),
+             (CENTER_X - k["bottom"], k["foot"])], fill=0)
     return image
+
+
+def ground(size, palette):
+    big = size * SUPERSAMPLE
+    image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    ImageDraw.Draw(image).rounded_rectangle(
+        (0, 0, big - 1, big - 1),
+        round(big * TILE_RADIUS / GRID),
+        fill=palette["ground"],
+        outline=palette["edge"],
+        width=max(SUPERSAMPLE, round(big * TILE_EDGE_WIDTH / GRID)),
+    )
+    return image.resize((size, size), Image.LANCZOS)
+
+
+def draw_icon(size, palette, variant=None):
+    image = ground(size, palette)
+    mark = Image.new("RGBA", (size, size), rgba(palette["mark"]))
+    if size <= PIXEL_SIZE:
+        mask = Image.new("L", (PIXEL_SIZE, PIXEL_SIZE), 0)
+        for y, row in enumerate(PIXEL_ROWS):
+            for x, cell in enumerate(row):
+                if cell == "#":
+                    mask.putpixel((x, y), 255)
+        image.paste(mark, (0, 0), mask.resize((size, size), Image.NEAREST))
+        return image
+    if variant is None:
+        variant = DETAILED if size >= DETAILED_FROM else SIMPLIFIED
+    inner = round(size * variant["scale"])
+    mask = Image.new("L", (size, size), 0)
+    mask.paste(tower(variant).resize((inner, inner), Image.LANCZOS), ((size - inner) // 2, (size - inner) // 2))
+    image.paste(mark, (0, 0), mask)
+    return image
+
+
+def sheet(palette, page):
+    frames = [draw_icon(size, palette) for size in ICON_SIZES]
+    shown = [f if f.width >= SHEET_SCALE_LIMIT else f.resize((f.width * 4, f.height * 4), Image.NEAREST) for f in frames]
+    width = SHEET_GAP + sum(f.width + SHEET_GAP for f in frames)
+    width = max(width, SHEET_GAP + sum(f.width + SHEET_GAP for f in shown))
+    height = SHEET_GAP * 3 + max(f.height for f in frames) + max(f.height for f in shown)
+    out = Image.new("RGBA", (width, height), page)
+    x = SHEET_GAP
+    for f in frames:
+        out.alpha_composite(f, (x, SHEET_GAP))
+        x += f.width + SHEET_GAP
+    x = SHEET_GAP
+    for f in shown:
+        out.alpha_composite(f, (x, SHEET_GAP * 2 + max(g.height for g in frames)))
+        x += f.width + SHEET_GAP
+    return out.convert("RGB")
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ico", type=pathlib.Path, required=True)
+    parser.add_argument("--ico", type=pathlib.Path)
     parser.add_argument("--preview", type=pathlib.Path)
     parser.add_argument("--pixels", type=pathlib.Path)
+    parser.add_argument("--sheet", type=pathlib.Path)
+    parser.add_argument("--sheet-page", default="#000000")
+    parser.add_argument("--palette", choices=sorted(PALETTES), default=DEFAULT_PALETTE)
     args = parser.parse_args()
+    palette = PALETTES[args.palette]
 
-    image = draw_icon()
-    frames = [image.resize((size, size), Image.LANCZOS) for size in ICON_SIZES]
-    args.ico.parent.mkdir(parents=True, exist_ok=True)
-    frames[-1].save(args.ico, format="ICO", append_images=frames[:-1], sizes=[(s, s) for s in ICON_SIZES])
+    if args.ico:
+        frames = [draw_icon(size, palette) for size in ICON_SIZES]
+        args.ico.parent.mkdir(parents=True, exist_ok=True)
+        frames[-1].save(args.ico, format="ICO", append_images=frames[:-1], sizes=[(s, s) for s in ICON_SIZES])
     if args.preview:
         args.preview.parent.mkdir(parents=True, exist_ok=True)
-        image.resize((PREVIEW_SIZE, PREVIEW_SIZE), Image.LANCZOS).save(args.preview)
+        draw_icon(PREVIEW_SIZE, palette).save(args.preview)
     if args.pixels:
-        small = image.resize((PIXELS_SIZE, PIXELS_SIZE), Image.LANCZOS)
+        small = draw_icon(PIXELS_SIZE, palette, SIMPLIFIED)
         args.pixels.parent.mkdir(parents=True, exist_ok=True)
         with open(args.pixels, "wb") as out:
             out.write(struct.pack("<II", small.width, small.height))
             out.write(small.tobytes("raw", "BGRA"))
+    if args.sheet:
+        args.sheet.parent.mkdir(parents=True, exist_ok=True)
+        sheet(palette, args.sheet_page).save(args.sheet)
 
 
 if __name__ == "__main__":

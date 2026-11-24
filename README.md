@@ -99,9 +99,12 @@ Colours, sizes, the clipboard timeout and the Argon2id preset are all in `config
 of that kind is written inline in the drawing code. UI text lives in `strings.hpp` for the same
 reason (and to make a later translation a single-file change).
 
-The application icon is a placeholder: a citadel wall with a keyhole on a black tile. It is
-drawn by a script, and `app.ico` and `app-icon.argb` are its committed outputs, so a build
-does not need Pillow.
+The application icon is a tower with a keyhole, in the two colours of the default theme
+(its background and its text). It is drawn at three levels of detail: four merlons and a
+small keyhole from 48 px up, three merlons and a larger keyhole from 20 to 40 px, and a
+version placed pixel by pixel at 16 px. It is drawn by a script, and `app.ico` and
+`app-icon.argb` are its committed outputs, so a build does not need Pillow. **It has not
+been checked against registered trademarks.**
 The shapes and colours are the constants at the top of the script. To draw it again:
 
 ```
