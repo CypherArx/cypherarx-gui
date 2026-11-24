@@ -101,8 +101,10 @@ reason (and to make a later translation a single-file change).
 
 The application icon is a tower with a keyhole, in the two colours of the default theme
 (its background and its text). It is drawn at three levels of detail: four merlons and a
-small keyhole from 48 px up, three merlons and a larger keyhole from 20 to 40 px, and a
-version placed pixel by pixel at 16 px. It is drawn by a script, and `app.ico` and
+small keyhole from 48 px up, three merlons and a larger keyhole from 24 to 40 px, and
+versions placed pixel by pixel at 16 and 20 px. The title bar shows the 20 px one as it is,
+without scaling, so it is sharp at 100% display scaling and soft above that. It is drawn by a
+script, and `app.ico` and
 `app-icon.argb` are its committed outputs, so a build does not need Pillow. **It has not
 been checked against registered trademarks.**
 The shapes and colours are the constants at the top of the script. To draw it again:

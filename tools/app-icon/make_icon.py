@@ -8,7 +8,8 @@ GRID = 192
 SUPERSAMPLE = 8
 ICON_SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256]
 PREVIEW_SIZE = 256
-PIXELS_SIZE = 96
+PIXELS_SIZE = 20
+PIXELS_SCALE = 1
 SHEET_SCALE_LIMIT = 128
 SHEET_GAP = 24
 
@@ -48,25 +49,48 @@ SIMPLIFIED = {
 }
 DETAILED_FROM = 48
 
-PIXEL_SIZE = 16
-PIXEL_ROWS = [
-    "................",
-    "..###.####.###..",
-    "..###.####.###..",
-    "..############..",
-    "..############..",
-    "...##########...",
-    "....########....",
-    "....########....",
-    "....########....",
-    "...####..####...",
-    "...####..####...",
-    "...####..####...",
-    "...####..####...",
-    "..############..",
-    "..############..",
-    "................",
-]
+PIXEL_MAPS = {
+    16: [
+        "................",
+        "..###.####.###..",
+        "..###.####.###..",
+        "..############..",
+        "..############..",
+        "...##########...",
+        "....########....",
+        "....########....",
+        "....########....",
+        "...####..####...",
+        "...####..####...",
+        "...####..####...",
+        "...####..####...",
+        "..############..",
+        "..############..",
+        "................",
+    ],
+    20: [
+        "....................",
+        "....................",
+        "....................",
+        ".....##.####.##.....",
+        ".....##.####.##.....",
+        ".....##########.....",
+        ".....##########.....",
+        "......########......",
+        "......########......",
+        "......##....##......",
+        "......##....##......",
+        "......###..###......",
+        "......###..###......",
+        ".....##########.....",
+        ".....##########.....",
+        ".....##########.....",
+        ".....##########.....",
+        "....................",
+        "....................",
+        "....................",
+    ],
+}
 
 
 def rgba(colour):
@@ -112,13 +136,13 @@ def ground(size, palette):
 def draw_icon(size, palette, variant=None):
     image = ground(size, palette)
     mark = Image.new("RGBA", (size, size), rgba(palette["mark"]))
-    if size <= PIXEL_SIZE:
-        mask = Image.new("L", (PIXEL_SIZE, PIXEL_SIZE), 0)
-        for y, row in enumerate(PIXEL_ROWS):
+    if size in PIXEL_MAPS and variant is None:
+        mask = Image.new("L", (size, size), 0)
+        for y, row in enumerate(PIXEL_MAPS[size]):
             for x, cell in enumerate(row):
                 if cell == "#":
                     mask.putpixel((x, y), 255)
-        image.paste(mark, (0, 0), mask.resize((size, size), Image.NEAREST))
+        image.paste(mark, (0, 0), mask)
         return image
     if variant is None:
         variant = DETAILED if size >= DETAILED_FROM else SIMPLIFIED
@@ -166,7 +190,8 @@ def main():
         args.preview.parent.mkdir(parents=True, exist_ok=True)
         draw_icon(PREVIEW_SIZE, palette).save(args.preview)
     if args.pixels:
-        small = draw_icon(PIXELS_SIZE, palette, SIMPLIFIED)
+        small = draw_icon(PIXELS_SIZE, palette)
+        small = small.resize((PIXELS_SIZE * PIXELS_SCALE, PIXELS_SIZE * PIXELS_SCALE), Image.NEAREST)
         args.pixels.parent.mkdir(parents=True, exist_ok=True)
         with open(args.pixels, "wb") as out:
             out.write(struct.pack("<II", small.width, small.height))
