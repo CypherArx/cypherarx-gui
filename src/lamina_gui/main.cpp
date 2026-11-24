@@ -282,6 +282,12 @@ int run_selftest() {
         ok = expect(!s.lock_if_due(clipboard, t0 + std::chrono::minutes(4)) && s.has_vault(),
                     "input restarts the idle time") &&
              ok;
+        s.note_activity(t0 + std::chrono::hours(5));
+        ok = expect(!s.lock_if_due(clipboard, t0 + std::chrono::hours(5) + std::chrono::minutes(2)) &&
+                        s.has_vault(),
+                    "a vault in use is not locked however long it has been open") &&
+             ok;
+        s.note_activity(t0 + std::chrono::minutes(2));
         ok = expect(s.lock_if_due(clipboard, t0 + std::chrono::minutes(5)) && !s.has_vault(),
                     "the vault locks after the idle time") &&
              ok;

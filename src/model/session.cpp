@@ -358,8 +358,7 @@ std::optional<Status> Session::poll_unlock(ClipboardPort& clipboard) {
     close_vault(clipboard);
     vault_ = std::move(*result);
     vault_path_ = unlock_path_;
-    unlocked_at_ = Clock::now();
-    last_activity_ = unlocked_at_;
+    last_activity_ = Clock::now();
     reload_entries();
     after_unlock();
     return Status{};
@@ -1228,17 +1227,11 @@ bool Session::lock_if_due(ClipboardPort& clipboard, Clock::time_point now) {
         return false;
     }
     const int idle = vault_settings_.session_lock_idle_minutes;
-    const int session = vault_settings_.session_duration_minutes;
-    std::string reason;
-    if (idle > 0 && now - last_activity_ >= std::chrono::minutes(idle)) {
-        reason = format(text::locked_idle_fmt, idle);
-    } else if (session > 0 && now - unlocked_at_ >= std::chrono::minutes(session)) {
-        reason = format(text::locked_session_fmt, session);
-    } else {
+    if (idle <= 0 || now - last_activity_ < std::chrono::minutes(idle)) {
         return false;
     }
     close_vault(clipboard);
-    status_ = std::move(reason);
+    status_ = format(text::locked_idle_fmt, idle);
     touch();
     return true;
 }
@@ -1293,7 +1286,6 @@ std::optional<double> Session::next_wake_seconds() const {
         wake = wake ? std::min(*wake, settings_.away_poll_seconds) : settings_.away_poll_seconds;
     }
     until(last_activity_, vault_settings_.session_lock_idle_minutes);
-    until(unlocked_at_, vault_settings_.session_duration_minutes);
     return wake;
 }
 

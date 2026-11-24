@@ -253,7 +253,6 @@ private:
     std::future<std::expected<Vault, VaultError>> unlock_;
     UnlockMode unlock_mode_ = UnlockMode::Open;
     Settings vault_settings_;
-    std::chrono::steady_clock::time_point unlocked_at_{};
     std::chrono::steady_clock::time_point last_activity_{};
     std::future<std::expected<void, VaultError>> rotate_;
     bool changing_password_ = false;
