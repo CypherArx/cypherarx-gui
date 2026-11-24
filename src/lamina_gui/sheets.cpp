@@ -306,6 +306,8 @@ ChangePasswordSheet::ChangePasswordSheet(const Kit& kit, Host& host)
       strength_(panel_.add<LabelC>(kit, muted("", true))),
       repeat_(panel_.add<SecretField>(kit, str::repeat_password, kit.cfg->limits.password_buffer,
                                       &ThemePreset::sheet)),
+      kdf_(panel_.add<SelectField>(kit, str::kdf_strength, &ThemePreset::sheet)),
+      kdf_hint_(panel_.add<LabelC>(kit, muted(str::kdf_hint, true))),
       cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
       ok_(panel_.add<ButtonC>(kit, ButtonSpec{str::ok, ButtonStyle::filled})) {
     next_.set_paste_allowed(false);
@@ -332,6 +334,8 @@ NodePtr ChangePasswordSheet::body() {
     rows.push_back(next_.node());
     rows.push_back(strength_.node());
     rows.push_back(repeat_.node());
+    rows.push_back(kdf_.node());
+    rows.push_back(kdf_hint_.node());
     rows.push_back(hrow(kit_, {lm::layout::flexible_space(), cancel_.node(), ok_.node()}));
     return vcol(kit_, std::move(rows));
 }
@@ -347,6 +351,20 @@ void ChangePasswordSheet::refresh() {
     strength_.set_text(
         gui::judge_password(next_.bytes(), creating_ ? std::span<const std::uint8_t>{} : current_.bytes())
             .summary);
+    const std::optional<KdfChoices>& choices = host_.session().kdf_choices();
+    const std::size_t chosen = kdf_.has_items() && measured_ ? kdf_.index() : kit_.cfg->security.kdf_default_choice;
+    measured_ = choices.has_value();
+    if (choices) {
+        kdf_.set_items(gui::kdf_choice_labels(*choices, next_.bytes()), chosen);
+    } else {
+        kdf_.set_items({str::kdf_measuring});
+    }
+}
+
+void ChangePasswordSheet::measured() {
+    if (is_open()) {
+        refresh();
+    }
 }
 
 void ChangePasswordSheet::start(std::filesystem::path file, bool creating) {
@@ -357,6 +375,8 @@ void ChangePasswordSheet::start(std::filesystem::path file, bool creating) {
     show_file(name_, folder_, file_);
     current_.set_visible(!creating);
     clear();
+    host_.session().start_kdf_benchmark();
+    measured_ = false;
     refresh();
     rebuild();
     show();
@@ -385,6 +405,10 @@ void ChangePasswordSheet::submit() {
         host_.message(str::passwords_differ);
         return;
     }
+    if (!host_.session().kdf_choices()) {
+        host_.message(str::kdf_still_measuring);
+        return;
+    }
     const gui::PasswordJudgement judgement =
         gui::judge_password(next_.bytes(), creating_ ? std::span<const std::uint8_t>{} : current_.bytes());
     if (judgement.refused()) {
@@ -399,10 +423,14 @@ void ChangePasswordSheet::submit() {
 }
 
 void ChangePasswordSheet::proceed() {
+    const std::optional<KdfChoices>& choices = host_.session().kdf_choices();
+    const std::optional<KdfParams> params =
+        choices && kdf_.index() < choices->size() ? std::optional((*choices)[kdf_.index()].params)
+                                                  : std::nullopt;
     if (creating_) {
-        host_.session().start_unlock(gui::UnlockMode::Create, file_, next_.bytes());
+        host_.session().start_unlock(gui::UnlockMode::Create, file_, next_.bytes(), params);
     } else {
-        host_.session().start_change_password(current_.bytes(), next_.bytes());
+        host_.session().start_change_password(current_.bytes(), next_.bytes(), params);
     }
     clear();
     close();

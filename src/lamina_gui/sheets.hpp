@@ -136,6 +136,7 @@ public:
     std::function<void()> on_started;
     void open(std::filesystem::path file);
     void open_new(std::filesystem::path file);
+    void measured();
 
 protected:
     NodePtr body() override;
@@ -150,6 +151,7 @@ private:
     Host& host_;
     std::filesystem::path file_;
     bool creating_ = false;
+    bool measured_ = false;
     LabelC& name_;
     LabelC& folder_;
     LabelC& note_;
@@ -157,6 +159,8 @@ private:
     SecretField& next_;
     LabelC& strength_;
     SecretField& repeat_;
+    SelectField& kdf_;
+    LabelC& kdf_hint_;
     ButtonC& cancel_;
     ButtonC& ok_;
 };

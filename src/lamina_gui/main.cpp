@@ -61,6 +61,7 @@ int run_selftest() {
 
     gui::SessionSettings settings;
     settings.kdf_params = cypherarx::lamina_gui::config().security.kdf_params_selftest;
+    settings.kdf_benchmark = cypherarx::lamina_gui::config().security.kdf_benchmark_selftest;
     MemoryClipboard clipboard;
     bool ok = true;
     {
@@ -277,6 +278,26 @@ int run_selftest() {
                     "a stronger password than the current one") &&
              ok;
 
+        s.start_kdf_benchmark();
+        while (!s.poll_kdf_benchmark()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        ok = expect(s.kdf_choices().has_value(), "the key strength is measured") && ok;
+        if (s.kdf_choices()) {
+            const std::string_view phrase = "correct horse battery staple";
+            const std::vector<std::string> plain = gui::kdf_choice_labels(*s.kdf_choices(), {});
+            const std::vector<std::string> with_years = gui::kdf_choice_labels(
+                *s.kdf_choices(), {reinterpret_cast<const std::uint8_t*>(phrase.data()), phrase.size()});
+            ok = expect(plain.size() == 3 && with_years.size() == 3 && plain[0].find("year") == std::string::npos &&
+                            with_years[0].find("year") != std::string::npos,
+                        "three key strengths, with the years once there is a password") &&
+                 ok;
+            s.start_change_password(pw, next_pw, (*s.kdf_choices())[2].params);
+            ok = expect(wait_rekey().has_value(), "change the password with a measured key strength") && ok;
+            s.start_change_password(next_pw, pw);
+            ok = expect(wait_rekey().has_value(), "and back") && ok;
+        }
+
         cypherarx::Settings away = s.vault_settings();
         away.session_lock_on_screensaver = false;
         ok = expect(s.set_vault_settings(away).has_value() && !s.watches_away() &&
@@ -339,7 +360,7 @@ int run_selftest() {
          ok;
     fs::remove_all(prefs.parent_path(), ec);
     if (ok) {
-        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, settings, import, rotation, password change, locking, password strength, preferences)\n";
+        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, settings, import, rotation, password change, locking, password strength, key strength, preferences)\n";
     }
     return ok ? 0 : 1;
 }

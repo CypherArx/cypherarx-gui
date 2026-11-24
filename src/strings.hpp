@@ -220,6 +220,19 @@ inline constexpr const char* strength_weaker = " Weaker than the current passwor
 inline constexpr const char* strength_same = " About as strong as the current password.";
 inline constexpr const char* strength_stronger = " Stronger than the current password.";
 inline constexpr const char* confirm_weak_password = "Use this password anyway?";
+inline constexpr const char* kdf_strength = "Key strength";
+inline constexpr const char* kdf_light = "Light";
+inline constexpr const char* kdf_standard = "Standard";
+inline constexpr const char* kdf_strong = "Strong";
+inline constexpr const char* kdf_measuring = "Measuring this computer...";
+inline constexpr const char* kdf_still_measuring = "Still measuring this computer. Try again in a moment.";
+inline constexpr const char* kdf_choice_fmt = "%s, %.1f s";
+inline constexpr const char* kdf_years_under_one = ", under 1 year";
+inline constexpr const char* kdf_years_fmt = ", ~%s years";
+inline constexpr const char* kdf_years_over = ", 1 billion+ years";
+inline constexpr const char* kdf_hint =
+    "Seconds to open the vault on this computer, and years to guess this password. A slower key makes every "
+    "guess slower too. The years assume an attacker with one computer like this one: read them as a scale.";
 inline constexpr const char* access_log = "Access log";
 inline constexpr const char* import_csv = "Import CSV";
 inline constexpr const char* imported_fmt =

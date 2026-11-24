@@ -238,8 +238,7 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
     encrypted again with a new data key, on a worker thread behind the spinner.
   - *Change master password*: a sheet asks for the current password and the new one twice.
     The change also replaces the data key and encrypts every stored value again (the core
-    has no way to change the password and keep the key), on the same worker thread. The
-    key derivation parameters are the fixed ones a new vault gets.
+    has no way to change the password and keep the key), on the same worker thread.
 - A new master password, in *Change master password* and in *New Vault* (which uses the
   same sheet without the current password): it is typed twice and cannot be pasted in. A
   line under the field says how strong it is as it is typed, and in a change how it
@@ -248,6 +247,15 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   §7.1, §7.4). The judgement is the core's `master_password_strength`; the wording and
   the comparison are in the model (`judge_password`). Opening an existing vault is not
   affected, whatever its password.
+- Key strength, in the same sheet: when the sheet opens, the core's `benchmark_kdf` measures
+  this computer on a worker thread, once per run of the application (about four seconds),
+  and the *Key strength* field then offers *Light*, *Standard* (the default) and *Strong*
+  with the seconds each takes to open the vault here and, once a password is typed, a
+  power-of-ten number of years to guess it (design document §8). The years assume one
+  computer like this one and the password estimate above, so they are a scale, not a
+  promise, and the sheet says so. The Argon2id numbers themselves are not shown. *OK* is
+  refused until the measurement is done. If the measurement fails, all three are the fixed
+  parameters used before.
 - Access log: copying a field value or a TOTP code, and showing a TOTP code, is recorded in
   the vault (encrypted), and records past the retention are removed when the vault is
   opened. The sidebar's *Recently used* shows the entries with a record inside the

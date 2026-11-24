@@ -65,6 +65,7 @@ gui::SessionSettings session_settings(const Config& cfg) {
     s.kdf_params = cfg.security.kdf_params;
     s.clipboard_clear_seconds = cfg.clipboard.clear_after_seconds;
     s.away_poll_seconds = cfg.security.away_poll_seconds;
+    s.kdf_benchmark = cfg.security.kdf_benchmark;
     s.category_indent = cfg.category_indent;
     return s;
 }
@@ -917,6 +918,9 @@ Argb App::update(const lm::sdl3::Frame& frame) {
         }
     }
 
+    if (session_.poll_kdf_benchmark()) {
+        change_password_sheet_.measured();
+    }
     if (const auto result = session_.poll_rotate()) {
         busy_sheet_.close();
         message(*result ? session_.status() : result->error().message);

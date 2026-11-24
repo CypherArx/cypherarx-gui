@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <fstream>
@@ -120,6 +121,40 @@ PasswordJudgement judge_password(std::span<const std::uint8_t> candidate,
     return out;
 }
 
+std::vector<std::string> kdf_choice_labels(const KdfChoices& choices,
+                                           std::span<const std::uint8_t> password) {
+    static constexpr std::array names{text::kdf_light, text::kdf_standard, text::kdf_strong};
+    static constexpr double seconds_per_year = 31557600.0;
+    static constexpr int largest_named_power = 9;
+    const std::optional<double> guesses =
+        password.empty() ? std::nullopt : std::optional(master_password_strength(password).guesses_log10);
+    std::vector<std::string> out;
+    for (std::size_t i = 0; i < choices.size(); ++i) {
+        std::string label = format(text::kdf_choice_fmt, names[i], choices[i].seconds);
+        if (guesses) {
+            const double years =
+                *guesses + std::log10(std::max(choices[i].seconds, 1e-9) / 2.0 / seconds_per_year);
+            const int power = static_cast<int>(std::lround(years));
+            if (power < 0) {
+                label += text::kdf_years_under_one;
+            } else if (power > largest_named_power) {
+                label += text::kdf_years_over;
+            } else {
+                std::string number = "1";
+                for (int digit = power; digit > 0; --digit) {
+                    if (digit % 3 == 0) {
+                        number += ',';
+                    }
+                    number += '0';
+                }
+                label += format(text::kdf_years_fmt, number.c_str());
+            }
+        }
+        out.push_back(std::move(label));
+    }
+    return out;
+}
+
 Session::Session(SessionSettings settings) : settings_(settings), status_(text::no_vault) {}
 
 void Session::report(std::string text) {
@@ -228,14 +263,15 @@ void Session::start_rotate(std::span<const std::uint8_t> password) {
 }
 
 void Session::start_change_password(std::span<const std::uint8_t> current,
-                                    std::span<const std::uint8_t> replacement) {
+                                    std::span<const std::uint8_t> replacement,
+                                    std::optional<KdfParams> chosen) {
     if (!vault_ || rotating() || unlocking()) {
         return;
     }
     Secret old_pw(current);
     Secret new_pw(replacement);
     Vault* vault = &*vault_;
-    const KdfParams params = settings_.kdf_params();
+    const KdfParams params = chosen ? *chosen : settings_.kdf_params();
     changing_password_ = true;
     rotate_ = std::async(std::launch::async,
                          [old_pw = std::move(old_pw), new_pw = std::move(new_pw), vault, params]() mutable {
@@ -360,8 +396,30 @@ Failure Session::failure(const std::string& what, VaultError e) const {
     return Failure{what + ": " + vault_error_text(e)};
 }
 
+void Session::start_kdf_benchmark() {
+    if (kdf_choices_ || kdf_benchmark_.valid()) {
+        return;
+    }
+    kdf_benchmark_ = std::async(std::launch::async,
+                                [options = settings_.kdf_benchmark] { return benchmark_kdf(options); });
+    touch();
+}
+
+bool Session::poll_kdf_benchmark() {
+    if (!kdf_benchmark_.valid() ||
+        kdf_benchmark_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+        return false;
+    }
+    const auto result = kdf_benchmark_.get();
+    const KdfParams fallback = settings_.kdf_params();
+    kdf_choices_ = result ? *result : KdfChoices{KdfChoice{fallback, 0.0}, KdfChoice{fallback, 0.0},
+                                                 KdfChoice{fallback, 0.0}};
+    touch();
+    return true;
+}
+
 void Session::start_unlock(UnlockMode mode, const std::filesystem::path& path,
-                           std::span<const std::uint8_t> password) {
+                           std::span<const std::uint8_t> password, std::optional<KdfParams> chosen) {
     if (unlocking()) {
         return;
     }
@@ -369,7 +427,7 @@ void Session::start_unlock(UnlockMode mode, const std::filesystem::path& path,
     unlock_mode_ = mode;
     unlock_path_ = path_utf8(path);
     const bool create = mode == UnlockMode::Create;
-    const KdfParams params = settings_.kdf_params();
+    const KdfParams params = chosen ? *chosen : settings_.kdf_params();
     unlock_ = std::async(std::launch::async,
                          [pw = std::move(pw), path, create, params]() mutable {
                              auto r = create ? Vault::create(path, pw.bytes(), params)
@@ -1307,6 +1365,9 @@ void Session::tick(ClipboardPort& clipboard) {
 
 std::optional<double> Session::next_wake_seconds() const {
     std::optional<double> wake = clipboard_.seconds_until_clear();
+    if (kdf_benchmark_.valid()) {
+        wake = wake ? std::min(*wake, settings_.kdf_poll_seconds) : settings_.kdf_poll_seconds;
+    }
     if (!vault_) {
         return wake;
     }

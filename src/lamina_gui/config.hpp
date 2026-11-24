@@ -256,6 +256,11 @@ struct SecurityConfig {
     KdfParams (*kdf_params)() = &KdfParams::moderate;
     KdfParams (*kdf_params_selftest)() = &KdfParams::interactive;
     double away_poll_seconds = 2.0;
+    KdfBenchmarkOptions kdf_benchmark{};
+    KdfBenchmarkOptions kdf_benchmark_selftest{.budget_seconds = 0.05,
+                                               .min_mem = std::size_t{8} * 1024 * 1024,
+                                               .max_mem = std::size_t{16} * 1024 * 1024};
+    std::size_t kdf_default_choice = 1;
 };
 
 struct Limits {

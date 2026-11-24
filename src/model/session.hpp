@@ -56,10 +56,15 @@ struct PasswordJudgement {
 PasswordJudgement judge_password(std::span<const std::uint8_t> candidate,
                                  std::span<const std::uint8_t> current = {});
 
+std::vector<std::string> kdf_choice_labels(const KdfChoices& choices,
+                                           std::span<const std::uint8_t> password);
+
 struct SessionSettings {
     KdfParams (*kdf_params)() = &KdfParams::moderate;
     int clipboard_clear_seconds = 20;
     double away_poll_seconds = 2.0;
+    KdfBenchmarkOptions kdf_benchmark{};
+    double kdf_poll_seconds = 0.1;
     const char* category_indent = "    ";
     std::uint32_t totp_period_seconds = 30;
     std::size_t import_max_bytes = 16 * 1024 * 1024;
@@ -135,7 +140,10 @@ public:
     std::uint64_t revision() const { return revision_; }
 
     void start_unlock(UnlockMode mode, const std::filesystem::path& path,
-                      std::span<const std::uint8_t> password);
+                      std::span<const std::uint8_t> password, std::optional<KdfParams> params = std::nullopt);
+    void start_kdf_benchmark();
+    bool poll_kdf_benchmark();
+    const std::optional<KdfChoices>& kdf_choices() const { return kdf_choices_; }
     bool unlocking() const { return unlock_.valid(); }
     UnlockMode unlock_mode() const { return unlock_mode_; }
     const std::string& unlock_path() const { return unlock_path_; }
@@ -146,7 +154,8 @@ public:
     Status set_vault_settings(const Settings& settings);
     void start_rotate(std::span<const std::uint8_t> password);
     void start_change_password(std::span<const std::uint8_t> current,
-                               std::span<const std::uint8_t> replacement);
+                               std::span<const std::uint8_t> replacement,
+                               std::optional<KdfParams> params = std::nullopt);
     bool rotating() const { return rotate_.valid(); }
     std::optional<Status> poll_rotate();
     Status erase_source(const std::filesystem::path& file);
@@ -272,6 +281,8 @@ private:
     std::chrono::steady_clock::time_point last_activity_{};
     std::future<std::expected<void, VaultError>> rotate_;
     bool changing_password_ = false;
+    std::future<std::expected<KdfChoices, KdfError>> kdf_benchmark_;
+    std::optional<KdfChoices> kdf_choices_;
     std::string unlock_path_;
 
     std::optional<std::int64_t> totp_field_;
