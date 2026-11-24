@@ -14,7 +14,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CORE_SUBMODULE_TOKEN }}
 
       - name: Set up CMake and Ninja
         uses: lukka/get-cmake@latest
@@ -44,7 +43,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CORE_SUBMODULE_TOKEN }}
 
       - name: Set up CMake and Ninja
         uses: lukka/get-cmake@latest

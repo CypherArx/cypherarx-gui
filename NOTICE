@@ -2,3 +2,43 @@ cypherarx-gui
 Copyright 2026 Capsicum
 
 This product is licensed under the Apache License, Version 2.0 (LICENSE).
+
+This product includes software and data from the following projects, as git submodules:
+
+- cypherarx-core (external/cypherarx-core)
+  Copyright 2026 Capsicum. Apache License 2.0. Its NOTICE lists what it includes
+  and is built with (zxcvbn-c, libsodium, SQLite, miniz).
+
+- lamina-ui (https://github.com/Capsicum0907/lamina-ui, external/lamina-ui)
+  Copyright 2026 Capsicum. Apache License 2.0. Its NOTICE lists what it includes.
+
+- Material Symbols Rounded (https://github.com/google/material-design-icons)
+  Copyright Google LLC. Apache License 2.0. The icons named in CMakeLists.txt are cut
+  out of the font that lamina-ui vendors and compiled into the executable as a
+  modified subset. No text font is embedded; text is drawn with the fonts of the system.
+
+The application is built with the following projects. They are not in this repository;
+the build fetches them with vcpkg, which installs each license text as
+share/<name>/copyright.
+
+- SDL (https://libsdl.org)
+  Copyright (C) 1997-2026 Sam Lantinga. zlib License.
+
+- ThorVG (https://www.thorvg.org)
+  Copyright (c) 2020 - 2026 ThorVG Project. MIT License.
+
+- HarfBuzz (https://harfbuzz.github.io)
+  Copyright Google, Inc. and others, as its COPYING lists. "Old MIT" license.
+
+- Abseil (https://abseil.io)
+  Apache License 2.0.
+
+- libsodium (https://libsodium.org)
+  Copyright (c) 2013-2026 Frank Denis. ISC License.
+
+- SQLite (https://www.sqlite.org)
+  Public domain.
+
+- miniz (https://github.com/richgel999/miniz)
+  Copyright 2013-2014 RAD Game Tools and Valve Software.
+  Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC. MIT License.

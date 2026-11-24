@@ -5,7 +5,8 @@
 Desktop GUI for **CypherArx**, built on top of `cypherarx-core` and drawn with
 [lamina-ui](https://github.com/Capsicum0907/lamina-ui) (Material 3 Expressive on SDL3 + ThorVG).
 
-> **Status: pre-alpha, not for public use.** Private during development.
+> **Status: pre-alpha.** It has not been reviewed by anyone else, and the vault format may
+> change without notice. **Do not keep real passwords in it yet.**
 
 This is Phase 2: the first part of CypherArx with a user interface. The UI-free core lives in
 `cypherarx-core` and is included here as a git submodule under `external/cypherarx-core`. The
@@ -61,9 +62,10 @@ field, copies it, and checks that closing the vault clears the clipboard.
 
 `.github/workflows/ci.yml` builds on `windows-latest` with MSVC + vcpkg and runs `--selftest`,
 once normally and once with MSVC AddressSanitizer (`/fsanitize=address`, RelWithDebInfo). The
-core is a private submodule, so the workflow checks it out with a repository secret
-`CORE_SUBMODULE_TOKEN`: a fine-grained personal access token with read access to
-`cypherarx-core` contents. Without that secret the checkout step fails.
+submodules are fetched over HTTPS and the checkout uses no secret.
+**GitHub Actions is turned off on this repository for now, and the workflow has not run
+since the application moved to lamina-ui.** Until it does, the selftest has been run only
+on the author's machine.
 
 ## Layout
 
@@ -127,7 +129,7 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   each axis and a search box, and the **fields** pane for the selected entry.
 - Entry tree with two views of the same data: **Service axis** (tree by `parent_id`) and
   **Persona axis** (tree by `persona_id`). An account appears in both; the third column shows
-  its parent on the other axis. See the design canon, §10.1.1. On the persona axis the
+  its parent on the other axis. The model is in the core's `docs/data-model.md`. On the persona axis the
   accounts under a persona, and the accounts without one, are ordered by their service and
   then by their own name, so the accounts of one service stay together; the service axis
   keeps the order of creation. The tree starts with every row closed. Opening and closing is
@@ -210,7 +212,7 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
     an export). The access log retention, the idle lock and the lock on the screensaver
     take effect; the session length, the keyring and the export settings do not yet, and
     the sheet says so. The session length is how long a session kept in the OS keyring
-    lasts after the application is closed (design document §9), so it has nothing to act
+    lasts after the application is closed, so it has nothing to act
     on until the keyring is there; it does not close a vault that is open.
 - Locking: the vault closes by itself after the idle time without pointer, wheel, key or
   text input (0 turns this off). Open sheets are cancelled, which wipes what was typed into
@@ -252,15 +254,15 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   same sheet without the current password): it is typed twice and cannot be pasted in. A
   line under the field says how strong it is as it is typed, and in a change how it
   compares with the current one. Under 12 characters, or easy to guess, it is refused;
-  a fair one, or one weaker than the current one, needs a confirmation (design document
-  §7.1, §7.4). The judgement is the core's `master_password_strength`; the wording and
+  a fair one, or one weaker than the current one, needs a confirmation.
+  The judgement is the core's `master_password_strength`; the wording and
   the comparison are in the model (`judge_password`). Opening an existing vault is not
   affected, whatever its password.
 - Key strength, in the same sheet: when the sheet opens, the core's `benchmark_kdf` measures
   this computer on a worker thread, once per run of the application (about four seconds),
   and the *Key strength* field then offers *Light*, *Standard* (the default) and *Strong*
   with the seconds each takes to open the vault here and, once a password is typed, a
-  power-of-ten number of years to guess it (design document §8). The years assume one
+  power-of-ten number of years to guess it. The years assume one
   computer like this one and the password estimate above, so they are a scale, not a
   promise, and the sheet says so. The Argon2id numbers themselves are not shown. *OK* is
   refused until the measurement is done. If the measurement fails, all three are the fixed
@@ -306,10 +308,9 @@ Tag chips in the entry sheet take the pointer only.
 ## Design
 
 The design (purpose and principles, cryptography, data model) is in the core's `docs/`:
-`external/cypherarx-core/docs/design.md` and the documents it lists. Section numbers (§)
-elsewhere in this README refer to an earlier, unpublished design document.
+`external/cypherarx-core/docs/design.md` and the documents it lists.
 
 ## License
 
 cypherarx-gui is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE).
-The licenses of the libraries it is built with are not listed yet.
+NOTICE lists the libraries it is built with and their licenses.
