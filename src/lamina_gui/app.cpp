@@ -192,6 +192,7 @@ App::App()
       login_sheet_(kit_, *this),
       settings_sheet_(kit_, *this),
       import_sheet_(kit_, *this),
+      change_password_sheet_(kit_, *this),
       merge_sheet_(kit_, *this) {
     window_.set_minimum_size(cfg_.window.min_width_dp,
                              cfg_.window.min_height_dp + title_bar_extra(cfg_.window));
@@ -218,8 +219,9 @@ void App::save_preferences() {
 
 void App::locked() {
     const std::string reason = session_.status();
-    const std::array<Sheet*, 7> sheets{&entry_sheet_, &field_sheet_, &organize_sheet_, &login_sheet_,
-                                       &settings_sheet_, &import_sheet_, &merge_sheet_};
+    const std::array<Sheet*, 8> sheets{&entry_sheet_,    &field_sheet_,  &organize_sheet_,
+                                       &login_sheet_,    &settings_sheet_, &import_sheet_,
+                                       &merge_sheet_,    &change_password_sheet_};
     for (Sheet* sheet : sheets) {
         if (sheet->is_open()) {
             if (sheet->on_cancel) {
@@ -317,9 +319,11 @@ void App::open_vault_menu() {
     options.items.push_back({str::vault_settings, lm::icons::Icon{kit_.icons, cfg_.icons.vault_settings}});
     options.items.push_back({str::import_csv, lm::icons::Icon{kit_.icons, cfg_.icons.import_csv}});
     options.items.push_back({str::rotate_key, lm::icons::Icon{kit_.icons, cfg_.icons.rotate_key}});
+    options.items.push_back(
+        {str::change_password, lm::icons::Icon{kit_.icons, cfg_.icons.change_password}});
     auto menu = std::make_unique<MenuModal>(kit_, std::move(options), [this](std::size_t index) {
-        const std::array<void (App::*)(), 3> actions{&App::open_vault_settings, &App::import_csv,
-                                                     &App::rotate_key};
+        const std::array<void (App::*)(), 4> actions{&App::open_vault_settings, &App::import_csv,
+                                                     &App::rotate_key, &App::change_password};
         if (index < actions.size()) {
             (this->*actions[index])();
         }
@@ -393,6 +397,10 @@ void App::rotate_key() {
     });
 }
 
+void App::change_password() {
+    change_password_sheet_.open(gui::path_from_utf8(session_.vault_path()));
+}
+
 void App::delete_entry(std::int64_t id) {
     session_.select_entry(id);
     confirm(str::confirm_delete_entry, [this] { check(session_.delete_selected_entry()); });
@@ -435,6 +443,12 @@ void App::wire() {
     close_.on_click = [this] { session_.close_vault(clipboard_); };
     theme_button_.on_click = [this] { open_theme_menu(); };
     vault_menu_.on_click = [this] { open_vault_menu(); };
+    change_password_sheet_.on_started = [this] {
+        if (session_.rotating()) {
+            busy_sheet_.open(str::change_password, gui::path_from_utf8(session_.vault_path()), str::rotating);
+            present(busy_sheet_);
+        }
+    };
     import_sheet_.on_import = [this](const std::filesystem::path& file,
                                      std::optional<std::int64_t> persona) { run_import(file, persona); };
     password_sheet_.on_started = [this] {
@@ -854,7 +868,7 @@ Argb App::update(const lm::sdl3::Frame& frame) {
 
     if (const auto result = session_.poll_rotate()) {
         busy_sheet_.close();
-        message(*result ? std::string(str::key_rotated) : result->error().message);
+        message(*result ? session_.status() : result->error().message);
     }
     if (const auto result = session_.poll_unlock(clipboard_)) {
         busy_sheet_.close();

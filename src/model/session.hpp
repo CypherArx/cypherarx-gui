@@ -126,6 +126,8 @@ public:
     const Settings& vault_settings() const { return vault_settings_; }
     Status set_vault_settings(const Settings& settings);
     void start_rotate(std::span<const std::uint8_t> password);
+    void start_change_password(std::span<const std::uint8_t> current,
+                               std::span<const std::uint8_t> replacement);
     bool rotating() const { return rotate_.valid(); }
     std::optional<Status> poll_rotate();
     Outcome<ImportSummary> import_csv(const std::filesystem::path& file,
@@ -248,6 +250,7 @@ private:
     std::chrono::steady_clock::time_point unlocked_at_{};
     std::chrono::steady_clock::time_point last_activity_{};
     std::future<std::expected<void, VaultError>> rotate_;
+    bool changing_password_ = false;
     std::string unlock_path_;
 
     std::optional<std::int64_t> totp_field_;

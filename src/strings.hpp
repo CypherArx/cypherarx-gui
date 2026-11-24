@@ -183,6 +183,16 @@ inline constexpr const char* import_reminder =
 inline constexpr const char* vault_settings_saved = "Vault settings saved.";
 inline constexpr const char* rotate_key = "Rotate key";
 inline constexpr const char* key_rotated = "The data key was rotated.";
+inline constexpr const char* change_password = "Change master password";
+inline constexpr const char* current_password = "Current password";
+inline constexpr const char* new_password = "New password";
+inline constexpr const char* repeat_password = "New password again";
+inline constexpr const char* change_password_note =
+    "Every stored value is encrypted again with a new key, so the old password no longer opens this file. "
+    "Copies made before the change still open with the old password.";
+inline constexpr const char* new_password_empty = "Enter the new password.";
+inline constexpr const char* passwords_differ = "The two new passwords are not the same.";
+inline constexpr const char* password_changed = "The master password was changed.";
 inline constexpr const char* access_log = "Access log";
 inline constexpr const char* import_csv = "Import CSV";
 inline constexpr const char* imported_fmt =

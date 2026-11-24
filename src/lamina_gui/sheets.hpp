@@ -127,6 +127,31 @@ private:
     ButtonC& ok_;
 };
 
+class ChangePasswordSheet final : public Sheet {
+public:
+    ChangePasswordSheet(const Kit& kit, Host& host);
+
+    std::function<void()> on_started;
+    void open(std::filesystem::path file);
+
+protected:
+    NodePtr body() override;
+
+private:
+    void submit();
+    void clear();
+
+    Host& host_;
+    LabelC& name_;
+    LabelC& folder_;
+    LabelC& note_;
+    SecretField& current_;
+    SecretField& next_;
+    SecretField& repeat_;
+    ButtonC& cancel_;
+    ButtonC& ok_;
+};
+
 class MergeSheet final : public Sheet {
 public:
     MergeSheet(const Kit& kit, Host& host);

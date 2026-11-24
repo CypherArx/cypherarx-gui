@@ -73,6 +73,7 @@ private:
     void import_csv();
     void run_import(const std::filesystem::path& file, std::optional<std::int64_t> persona);
     void rotate_key();
+    void change_password();
     void open_add_menu();
     void delete_entry(std::int64_t id);
     void delete_field(std::int64_t id);
@@ -132,6 +133,7 @@ private:
     LoginSheet login_sheet_;
     SettingsSheet settings_sheet_;
     ImportSheet import_sheet_;
+    ChangePasswordSheet change_password_sheet_;
     MergeSheet merge_sheet_;
 
     std::vector<Modal*> modals_;

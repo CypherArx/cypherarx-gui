@@ -289,6 +289,74 @@ void ImportSheet::submit() {
     }
 }
 
+ChangePasswordSheet::ChangePasswordSheet(const Kit& kit, Host& host)
+    : Sheet(kit, str::change_password, kit.cfg->sheet.password_width),
+      host_(host),
+      name_(panel_.add<LabelC>(kit, file_name(kit))),
+      folder_(panel_.add<LabelC>(kit, file_folder(kit))),
+      note_(panel_.add<LabelC>(kit, muted(str::change_password_note, true))),
+      current_(panel_.add<SecretField>(kit, str::current_password, kit.cfg->limits.password_buffer,
+                                       &ThemePreset::sheet)),
+      next_(panel_.add<SecretField>(kit, str::new_password, kit.cfg->limits.password_buffer,
+                                    &ThemePreset::sheet)),
+      repeat_(panel_.add<SecretField>(kit, str::repeat_password, kit.cfg->limits.password_buffer,
+                                      &ThemePreset::sheet)),
+      cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
+      ok_(panel_.add<ButtonC>(kit, ButtonSpec{str::ok, ButtonStyle::filled})) {
+    current_.on_submit = [this] { panel_.focus(next_); };
+    next_.on_submit = [this] { panel_.focus(repeat_); };
+    repeat_.on_submit = [this] { submit(); };
+    ok_.on_click = [this] { submit(); };
+    on_submit = [this] { submit(); };
+    on_cancel = [this] {
+        clear();
+        close();
+    };
+    cancel_.on_click = on_cancel;
+}
+
+NodePtr ChangePasswordSheet::body() {
+    return vcol(kit_, {name_.node(), folder_.node(), note_.node(), current_.node(), next_.node(),
+                       repeat_.node(),
+                       hrow(kit_, {lm::layout::flexible_space(), cancel_.node(), ok_.node()})});
+}
+
+void ChangePasswordSheet::clear() {
+    for (SecretField* field : {&current_, &next_, &repeat_}) {
+        field->clear();
+        field->set_masked(true);
+    }
+}
+
+void ChangePasswordSheet::open(std::filesystem::path file) {
+    show_file(name_, folder_, file);
+    clear();
+    show();
+    panel_.focus(current_);
+    host_.present(*this);
+}
+
+void ChangePasswordSheet::submit() {
+    if (current_.empty()) {
+        host_.message(str::password_empty);
+        return;
+    }
+    if (next_.empty()) {
+        host_.message(str::new_password_empty);
+        return;
+    }
+    if (!std::ranges::equal(next_.bytes(), repeat_.bytes())) {
+        host_.message(str::passwords_differ);
+        return;
+    }
+    host_.session().start_change_password(current_.bytes(), next_.bytes());
+    clear();
+    close();
+    if (on_started) {
+        on_started();
+    }
+}
+
 MergeSheet::MergeSheet(const Kit& kit, Host& host)
     : Sheet(kit, str::merge_service, kit.cfg->sheet.form_width),
       host_(host),

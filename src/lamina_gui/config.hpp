@@ -228,6 +228,7 @@ struct IconConfig {
     lamina::icons::Symbol vault_settings = res::icons::tune;
     lamina::icons::Symbol import_csv = res::icons::upload_file;
     lamina::icons::Symbol rotate_key = res::icons::autorenew;
+    lamina::icons::Symbol change_password = res::icons::key;
     lamina::icons::Symbol add = res::icons::add;
     lamina::icons::Symbol edit = res::icons::edit;
     lamina::icons::Symbol remove = res::icons::delete_;

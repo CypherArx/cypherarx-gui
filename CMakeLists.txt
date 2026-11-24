@@ -52,6 +52,7 @@ lamina_add_resources(cypherarx_gui_resources
     folder_open
     history
     inventory_2
+    key
     light_mode
     lock
     login

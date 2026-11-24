@@ -230,6 +230,28 @@ int run_selftest() {
                     "copy after the rotation") &&
              ok;
 
+        const std::string next_text = "another-password";
+        const std::span<const std::uint8_t> next_pw{reinterpret_cast<const std::uint8_t*>(next_text.data()),
+                                                    next_text.size()};
+        const auto wait_rekey = [&] {
+            std::optional<gui::Status> done;
+            while (!(done = s.poll_rotate())) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
+            return *done;
+        };
+        s.start_change_password(next_pw, next_pw);
+        ok = expect(!wait_rekey().has_value(), "a wrong current password does not change it") && ok;
+        s.start_change_password(pw, next_pw);
+        ok = expect(wait_rekey().has_value(), "change the master password") && ok;
+        s.start_rotate(pw);
+        ok = expect(!wait_rekey().has_value(), "the old password is refused after the change") && ok;
+        ok = expect(s.copy_selected_field(clipboard).has_value() && clipboard.text() == "secret",
+                    "copy after the password change") &&
+             ok;
+        s.start_change_password(next_pw, pw);
+        ok = expect(wait_rekey().has_value(), "change the master password back") && ok;
+
         const auto t0 = gui::Session::Clock::now();
         s.note_activity(t0);
         ok = expect(!s.lock_if_due(clipboard, t0 + std::chrono::minutes(2)) && s.has_vault(),
@@ -266,7 +288,7 @@ int run_selftest() {
          ok;
     fs::remove_all(prefs.parent_path(), ec);
     if (ok) {
-        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, settings, import, rotation, preferences)\n";
+        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, settings, import, rotation, password change, preferences)\n";
     }
     return ok ? 0 : 1;
 }

@@ -100,7 +100,8 @@ void Session::finish_rotation() {
     }
     const auto result = rotate_.get();
     if (!result) {
-        status_ = failure(text::rotate_key, result.error()).message;
+        status_ = failure(changing_password_ ? text::change_password : text::rotate_key, result.error())
+                      .message;
     }
 }
 
@@ -179,11 +180,32 @@ void Session::start_rotate(std::span<const std::uint8_t> password) {
     }
     Secret pw(password);
     Vault* vault = &*vault_;
+    changing_password_ = false;
     rotate_ = std::async(std::launch::async, [pw = std::move(pw), vault]() mutable {
         auto r = vault->rotate_key(pw.bytes());
         pw = Secret();
         return r;
     });
+    touch();
+}
+
+void Session::start_change_password(std::span<const std::uint8_t> current,
+                                    std::span<const std::uint8_t> replacement) {
+    if (!vault_ || rotating() || unlocking()) {
+        return;
+    }
+    Secret old_pw(current);
+    Secret new_pw(replacement);
+    Vault* vault = &*vault_;
+    const KdfParams params = settings_.kdf_params();
+    changing_password_ = true;
+    rotate_ = std::async(std::launch::async,
+                         [old_pw = std::move(old_pw), new_pw = std::move(new_pw), vault, params]() mutable {
+                             auto r = vault->change_master_password(old_pw.bytes(), new_pw.bytes(), params);
+                             old_pw = Secret();
+                             new_pw = Secret();
+                             return r;
+                         });
     touch();
 }
 
@@ -195,9 +217,10 @@ std::optional<Status> Session::poll_rotate() {
     const auto result = rotate_.get();
     touch();
     if (!result) {
-        return fail(failure(text::rotate_key, result.error()).message);
+        return fail(
+            failure(changing_password_ ? text::change_password : text::rotate_key, result.error()).message);
     }
-    status_ = text::key_rotated;
+    status_ = changing_password_ ? text::password_changed : text::key_rotated;
     return Status{};
 }
 
