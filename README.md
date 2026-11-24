@@ -65,9 +65,6 @@ field, copies it, and checks that closing the vault clears the clipboard.
 `.github/workflows/ci.yml` builds on `windows-latest` with MSVC + vcpkg and runs `--selftest`,
 once normally and once with MSVC AddressSanitizer (`/fsanitize=address`, RelWithDebInfo). The
 submodules are fetched over HTTPS and the checkout uses no secret.
-**GitHub Actions is turned off on this repository for now, and the workflow has not run
-since the application moved to lamina-ui.** Until it does, the selftest has been run only
-on the author's machine.
 
 ## Layout
 

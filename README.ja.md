@@ -65,9 +65,7 @@ Python はアイコンのために使います。GUI が使う Material Symbols 
 
 `.github/workflows/ci.yml` は `windows-latest` で MSVC ＋ vcpkg によりビルドし `--selftest` を
 実行します。通常ビルドと、MSVC AddressSanitizer（`/fsanitize=address`、RelWithDebInfo）の 2 本。
-サブモジュールは HTTPS で取得し、チェックアウトにシークレットは使いません。**このリポジトリの GitHub Actions は今は止めてあり、アプリケーションを lamina-ui に
-移してからワークフローは一度も動いていません。** 動かすまでは、自己試験は作者のコンピューター
-でしか実行していません。
+サブモジュールは HTTPS で取得し、チェックアウトにシークレットは使いません。
 
 ## 構成
 
