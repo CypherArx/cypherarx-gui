@@ -1,5 +1,7 @@
 # CypherArx GUI
 
+<img src="resources/icon.svg" width="96" alt="The CypherArx icon: a tower with a keyhole">
+
 [日本語版はこちら / Japanese version](README.ja.md)
 
 Desktop GUI for **CypherArx**, built on top of `cypherarx-core` and drawn with
@@ -92,6 +94,7 @@ src/lamina_gui/main.cpp          entry point, --selftest
 
 resources/windows/app.{ico,rc}   the application icon, embedded in the executable on Windows
 resources/app-icon.argb          the same icon as pixels, drawn at the left of the title bar
+resources/icon.{svg,-512.png}    the same icon as a vector drawing and as a large image
 tools/app-icon/make_icon.py      draws that icon (Python 3 with Pillow)
 ```
 
@@ -101,8 +104,8 @@ reason (and to make a later translation a single-file change).
 
 The application icon is a tower with a keyhole, in the two colours of the default theme
 (its background and its text). It is drawn at three levels of detail: four merlons and a
-small keyhole from 48 px up, three merlons and a larger keyhole from 24 to 40 px, and
-versions placed pixel by pixel at 16 and 20 px. The title bar shows the 20 px one as it is,
+small keyhole from 48 px up, three merlons and a larger keyhole at 40 px, and versions
+placed pixel by pixel at 16, 20, 24 and 32 px. The title bar shows the 20 px one as it is,
 without scaling, so it is sharp at 100% display scaling and soft above that. It is drawn by a
 script, and `app.ico` and
 `app-icon.argb` are its committed outputs, so a build does not need Pillow. **It has not
@@ -110,7 +113,7 @@ been checked against registered trademarks.**
 The shapes and colours are the constants at the top of the script. To draw it again:
 
 ```
-python tools/app-icon/make_icon.py --ico resources/windows/app.ico --pixels resources/app-icon.argb
+python tools/app-icon/make_icon.py --ico resources/windows/app.ico --pixels resources/app-icon.argb \n    --svg resources/icon.svg --png resources/icon-512.png
 ```
 
 The taskbar takes the icon from the executable. The title bar is drawn by lamina-ui, whose

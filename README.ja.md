@@ -1,5 +1,7 @@
 # CypherArx GUI
 
+<img src="resources/icon.svg" width="96" alt="CypherArx のアイコン。鍵穴のある塔">
+
 [English version / 英語版はこちら](README.md)
 
 **CypherArx** のデスクトップ GUI。`cypherarx-core` の上に構築し、
@@ -92,6 +94,7 @@ src/lamina_gui/main.cpp          入口、--selftest
 
 resources/windows/app.{ico,rc}   アプリケーションのアイコン（Windows では実行ファイルに埋め込む）
 resources/app-icon.argb          同じアイコンのピクセル。タイトルバーの左端に描く
+resources/icon.{svg,-512.png}    同じアイコンのベクターの絵と、大きい画像
 tools/app-icon/make_icon.py      そのアイコンを描くスクリプト（Python 3 と Pillow）
 ```
 
@@ -100,8 +103,8 @@ tools/app-icon/make_icon.py      そのアイコンを描くスクリプト（Py
 `strings.hpp` に置いています。
 
 アプリケーションのアイコンは、鍵穴のある塔です。色は既定のテーマの 2 色（背景と文字）です。
-大きさによって 3 段階に描き分けています。48 px 以上は凹凸 4 つと小さい鍵穴、24〜40 px は
-凹凸 3 つと大きい鍵穴、16 px と 20 px はピクセルを 1 つずつ置いて描いたものです。タイトルバーは
+大きさによって 3 段階に描き分けています。48 px 以上は凹凸 4 つと小さい鍵穴、40 px は凹凸 3 つと
+大きい鍵穴、16・20・24・32 px はピクセルを 1 つずつ置いて描いたものです。タイトルバーは
 20 px の絵を拡大縮小せずにそのまま出すので、表示倍率が 100% のときはくっきり出て、それより
 大きい倍率ではぼやけます。スクリプトで描き、
 その出力の `app.ico` と `app-icon.argb` をコミットしてあるので、ビルドに Pillow は要りません。
@@ -109,7 +112,7 @@ tools/app-icon/make_icon.py      そのアイコンを描くスクリプト（Py
 形と色は、スクリプトの先頭の定数です。描き直すには次を実行します。
 
 ```
-python tools/app-icon/make_icon.py --ico resources/windows/app.ico --pixels resources/app-icon.argb
+python tools/app-icon/make_icon.py --ico resources/windows/app.ico --pixels resources/app-icon.argb \n    --svg resources/icon.svg --png resources/icon-512.png
 ```
 
 タスクバーは実行ファイルからアイコンを取ります。タイトルバーは lamina-ui が描きますが、
