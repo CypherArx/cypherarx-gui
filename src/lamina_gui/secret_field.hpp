@@ -19,6 +19,7 @@ public:
     SecretField(const Kit& kit, std::string label, std::size_t capacity, SurfaceRole container);
 
     std::function<void()> on_submit;
+    std::function<void()> on_change;
 
     std::span<const std::uint8_t> bytes() const { return buffer_.bytes(); }
     bool empty() const { return buffer_.empty(); }
@@ -26,6 +27,7 @@ public:
     void assign(std::span<const std::uint8_t> value);
     bool masked() const { return masked_; }
     void set_masked(bool masked);
+    void set_paste_allowed(bool allowed) { paste_allowed_ = allowed; }
 
     Size measure(const Constraints& c) override;
     void arrange(const Rect& r) override;
@@ -66,6 +68,7 @@ private:
     std::string composition_;
     std::size_t caret_ = 0;
     bool masked_ = true;
+    bool paste_allowed_ = true;
     bool focused_ = false;
     double scroll_x_ = 0.0;
     double blink_clock_ = 0.0;

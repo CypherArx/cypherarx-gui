@@ -18,6 +18,7 @@
 #include "cypherarx/entry.hpp"
 #include "cypherarx/kdf.hpp"
 #include "cypherarx/secret.hpp"
+#include "cypherarx/strength.hpp"
 #include "cypherarx/vault.hpp"
 
 #include "model/projection.hpp"
@@ -39,6 +40,21 @@ using ViaOptions = std::vector<std::pair<std::optional<std::int64_t>, std::strin
 enum class UnlockMode { Create, Open };
 
 enum class Away { screensaver, screen_locked, user_switched, resumed };
+
+struct PasswordJudgement {
+    PasswordVerdict verdict = PasswordVerdict::TooShort;
+    int score = 0;
+    std::optional<int> against_current;
+    std::string summary;
+
+    bool refused() const { return verdict == PasswordVerdict::TooShort || verdict == PasswordVerdict::Rejected; }
+    bool needs_confirmation() const {
+        return verdict == PasswordVerdict::Warn || (against_current && *against_current < 0);
+    }
+};
+
+PasswordJudgement judge_password(std::span<const std::uint8_t> candidate,
+                                 std::span<const std::uint8_t> current = {});
 
 struct SessionSettings {
     KdfParams (*kdf_params)() = &KdfParams::moderate;

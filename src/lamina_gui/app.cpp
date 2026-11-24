@@ -474,7 +474,12 @@ void App::choose_vault(gui::UnlockMode mode) {
     auto file = mode == gui::UnlockMode::Create ? gui::platform::choose_file_to_save(options)
                                                 : gui::platform::choose_file_to_open(options);
     base_.cancel();
-    if (file) {
+    if (!file) {
+        return;
+    }
+    if (mode == gui::UnlockMode::Create) {
+        change_password_sheet_.open_new(std::move(*file));
+    } else {
         password_sheet_.open(mode, std::move(*file));
     }
 }
@@ -488,6 +493,9 @@ void App::wire() {
     change_password_sheet_.on_started = [this] {
         if (session_.rotating()) {
             busy_sheet_.open(str::change_password, gui::path_from_utf8(session_.vault_path()), str::rotating);
+            present(busy_sheet_);
+        } else if (session_.unlocking()) {
+            busy_sheet_.open(str::new_vault, gui::path_from_utf8(session_.unlock_path()), str::unlocking);
             present(busy_sheet_);
         }
     };

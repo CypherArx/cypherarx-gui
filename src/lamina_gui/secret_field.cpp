@@ -107,7 +107,7 @@ void SecretField::erase(std::size_t from, std::size_t to) {
 }
 
 void SecretField::paste() {
-    if (!kit_.clipboard) {
+    if (!kit_.clipboard || !paste_allowed_) {
         return;
     }
     std::string clip = kit_.clipboard->text();
@@ -264,6 +264,9 @@ bool SecretField::handle(const KeyEvent& e) {
     }
     keep_caret_visible();
     blink_clock_ = 0.0;
+    if (on_change) {
+        on_change();
+    }
     return true;
 }
 
@@ -279,6 +282,9 @@ void SecretField::handle(const TextEvent& e) {
     }
     keep_caret_visible();
     blink_clock_ = 0.0;
+    if (on_change) {
+        on_change();
+    }
 }
 
 std::optional<Rect> SecretField::caret_area() const {

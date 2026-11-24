@@ -303,13 +303,18 @@ ChangePasswordSheet::ChangePasswordSheet(const Kit& kit, Host& host)
                                        &ThemePreset::sheet)),
       next_(panel_.add<SecretField>(kit, str::new_password, kit.cfg->limits.password_buffer,
                                     &ThemePreset::sheet)),
+      strength_(panel_.add<LabelC>(kit, muted("", true))),
       repeat_(panel_.add<SecretField>(kit, str::repeat_password, kit.cfg->limits.password_buffer,
                                       &ThemePreset::sheet)),
       cancel_(panel_.add<ButtonC>(kit, ButtonSpec{str::cancel, ButtonStyle::text})),
       ok_(panel_.add<ButtonC>(kit, ButtonSpec{str::ok, ButtonStyle::filled})) {
+    next_.set_paste_allowed(false);
+    repeat_.set_paste_allowed(false);
     current_.on_submit = [this] { panel_.focus(next_); };
     next_.on_submit = [this] { panel_.focus(repeat_); };
     repeat_.on_submit = [this] { submit(); };
+    current_.on_change = [this] { refresh(); };
+    next_.on_change = [this] { refresh(); };
     ok_.on_click = [this] { submit(); };
     on_submit = [this] { submit(); };
     on_cancel = [this] {
@@ -320,9 +325,15 @@ ChangePasswordSheet::ChangePasswordSheet(const Kit& kit, Host& host)
 }
 
 NodePtr ChangePasswordSheet::body() {
-    return vcol(kit_, {name_.node(), folder_.node(), note_.node(), current_.node(), next_.node(),
-                       repeat_.node(),
-                       hrow(kit_, {lm::layout::flexible_space(), cancel_.node(), ok_.node()})});
+    std::vector<NodePtr> rows{name_.node(), folder_.node(), note_.node()};
+    if (current_.visible()) {
+        rows.push_back(current_.node());
+    }
+    rows.push_back(next_.node());
+    rows.push_back(strength_.node());
+    rows.push_back(repeat_.node());
+    rows.push_back(hrow(kit_, {lm::layout::flexible_space(), cancel_.node(), ok_.node()}));
+    return vcol(kit_, std::move(rows));
 }
 
 void ChangePasswordSheet::clear() {
@@ -332,16 +343,37 @@ void ChangePasswordSheet::clear() {
     }
 }
 
-void ChangePasswordSheet::open(std::filesystem::path file) {
-    show_file(name_, folder_, file);
+void ChangePasswordSheet::refresh() {
+    strength_.set_text(
+        gui::judge_password(next_.bytes(), creating_ ? std::span<const std::uint8_t>{} : current_.bytes())
+            .summary);
+}
+
+void ChangePasswordSheet::start(std::filesystem::path file, bool creating) {
+    file_ = std::move(file);
+    creating_ = creating;
+    set_title(creating ? str::new_vault : str::change_password);
+    note_.set_text(creating ? str::new_vault_note : str::change_password_note);
+    show_file(name_, folder_, file_);
+    current_.set_visible(!creating);
     clear();
+    refresh();
+    rebuild();
     show();
-    panel_.focus(current_);
+    panel_.focus(creating ? next_ : current_);
     host_.present(*this);
 }
 
+void ChangePasswordSheet::open(std::filesystem::path file) {
+    start(std::move(file), false);
+}
+
+void ChangePasswordSheet::open_new(std::filesystem::path file) {
+    start(std::move(file), true);
+}
+
 void ChangePasswordSheet::submit() {
-    if (current_.empty()) {
+    if (!creating_ && current_.empty()) {
         host_.message(str::password_empty);
         return;
     }
@@ -353,7 +385,25 @@ void ChangePasswordSheet::submit() {
         host_.message(str::passwords_differ);
         return;
     }
-    host_.session().start_change_password(current_.bytes(), next_.bytes());
+    const gui::PasswordJudgement judgement =
+        gui::judge_password(next_.bytes(), creating_ ? std::span<const std::uint8_t>{} : current_.bytes());
+    if (judgement.refused()) {
+        host_.message(judgement.summary);
+        return;
+    }
+    if (judgement.needs_confirmation()) {
+        host_.confirm(judgement.summary + "\n\n" + str::confirm_weak_password, [this] { proceed(); });
+        return;
+    }
+    proceed();
+}
+
+void ChangePasswordSheet::proceed() {
+    if (creating_) {
+        host_.session().start_unlock(gui::UnlockMode::Create, file_, next_.bytes());
+    } else {
+        host_.session().start_change_password(current_.bytes(), next_.bytes());
+    }
     clear();
     close();
     if (on_started) {

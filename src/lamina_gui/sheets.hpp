@@ -135,20 +135,27 @@ public:
 
     std::function<void()> on_started;
     void open(std::filesystem::path file);
+    void open_new(std::filesystem::path file);
 
 protected:
     NodePtr body() override;
 
 private:
+    void start(std::filesystem::path file, bool creating);
     void submit();
+    void proceed();
     void clear();
+    void refresh();
 
     Host& host_;
+    std::filesystem::path file_;
+    bool creating_ = false;
     LabelC& name_;
     LabelC& folder_;
     LabelC& note_;
     SecretField& current_;
     SecretField& next_;
+    LabelC& strength_;
     SecretField& repeat_;
     ButtonC& cancel_;
     ButtonC& ok_;

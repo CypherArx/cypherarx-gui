@@ -253,6 +253,30 @@ int run_selftest() {
         s.start_change_password(next_pw, pw);
         ok = expect(wait_rekey().has_value(), "change the master password back") && ok;
 
+        const auto judged = [](std::string_view candidate, std::string_view current = {}) {
+            const auto span_of = [](std::string_view t) {
+                return std::span<const std::uint8_t>{reinterpret_cast<const std::uint8_t*>(t.data()), t.size()};
+            };
+            return gui::judge_password(span_of(candidate), span_of(current));
+        };
+        ok = expect(judged("pw").refused() && judged("password1234").refused() && !judged("").summary.empty(),
+                    "short and guessable master passwords are refused") &&
+             ok;
+        const gui::PasswordJudgement strong = judged("correct horse battery staple");
+        ok = expect(!strong.refused() && !strong.needs_confirmation() && !strong.against_current,
+                    "a passphrase is accepted without a question") &&
+             ok;
+        const gui::PasswordJudgement fair = judged("applebanana12");
+        ok = expect(!fair.refused() && fair.needs_confirmation(), "a fair password needs a confirmation") && ok;
+        const gui::PasswordJudgement step_down = judged("kettle-bluebird", "correct horse battery staple");
+        ok = expect(!step_down.refused() && step_down.against_current == -1 && step_down.needs_confirmation(),
+                    "a weaker password than the current one needs a confirmation") &&
+             ok;
+        const gui::PasswordJudgement step_up = judged("correct horse battery staple", "pw");
+        ok = expect(step_up.against_current == 1 && !step_up.needs_confirmation(),
+                    "a stronger password than the current one") &&
+             ok;
+
         cypherarx::Settings away = s.vault_settings();
         away.session_lock_on_screensaver = false;
         ok = expect(s.set_vault_settings(away).has_value() && !s.watches_away() &&
@@ -315,7 +339,7 @@ int run_selftest() {
          ok;
     fs::remove_all(prefs.parent_path(), ec);
     if (ok) {
-        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, settings, import, rotation, password change, locking, preferences)\n";
+        std::cout << "selftest: OK (session: vault, entries on both axes, search, field, clipboard, settings, import, rotation, password change, locking, password strength, preferences)\n";
     }
     return ok ? 0 : 1;
 }

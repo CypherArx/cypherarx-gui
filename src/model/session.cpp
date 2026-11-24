@@ -83,6 +83,43 @@ PathParts path_parts(const std::filesystem::path& p) {
     return {path_utf8(p.filename()), path_utf8(p.parent_path())};
 }
 
+PasswordJudgement judge_password(std::span<const std::uint8_t> candidate,
+                                 std::span<const std::uint8_t> current) {
+    PasswordJudgement out;
+    if (candidate.empty()) {
+        out.summary = format(text::strength_empty, kMasterPasswordMinLength);
+        return out;
+    }
+    const PasswordStrength strength = master_password_strength(candidate);
+    out.verdict = strength.verdict;
+    out.score = strength.score;
+    switch (strength.verdict) {
+    case PasswordVerdict::TooShort:
+        out.summary = format(text::strength_too_short_fmt, strength.length, kMasterPasswordMinLength);
+        break;
+    case PasswordVerdict::Rejected:
+        out.summary = text::strength_rejected;
+        break;
+    case PasswordVerdict::Warn:
+        out.summary = text::strength_warn;
+        break;
+    case PasswordVerdict::Advise:
+        out.summary = text::strength_advise;
+        break;
+    case PasswordVerdict::Ok:
+        out.summary = text::strength_ok;
+        break;
+    }
+    if (!current.empty()) {
+        const int before = master_password_strength(current).score;
+        out.against_current = strength.score < before ? -1 : strength.score > before ? 1 : 0;
+        out.summary += *out.against_current < 0   ? text::strength_weaker
+                       : *out.against_current > 0 ? text::strength_stronger
+                                                  : text::strength_same;
+    }
+    return out;
+}
+
 Session::Session(SessionSettings settings) : settings_(settings), status_(text::no_vault) {}
 
 void Session::report(std::string text) {

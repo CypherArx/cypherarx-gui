@@ -203,10 +203,23 @@ inline constexpr const char* new_password = "New password";
 inline constexpr const char* repeat_password = "New password again";
 inline constexpr const char* change_password_note =
     "Every stored value is encrypted again with a new key, so the old password no longer opens this file. "
-    "Copies made before the change still open with the old password.";
+    "Copies made before the change still open with the old password. The new password cannot be pasted in.";
 inline constexpr const char* new_password_empty = "Enter the new password.";
 inline constexpr const char* passwords_differ = "The two new passwords are not the same.";
 inline constexpr const char* password_changed = "The master password was changed.";
+inline constexpr const char* new_vault_note =
+    "This password encrypts the vault. Nobody can recover it if it is forgotten. It cannot be pasted in.";
+inline constexpr const char* strength_empty = "At least %zu characters. Several unrelated words work well.";
+inline constexpr const char* strength_too_short_fmt = "Too short: %zu of at least %zu characters.";
+inline constexpr const char* strength_rejected =
+    "Too easy to guess. Several unrelated words make a good passphrase.";
+inline constexpr const char* strength_warn = "Fair. A longer passphrase would be harder to guess.";
+inline constexpr const char* strength_advise = "Good. One more word would make it strong.";
+inline constexpr const char* strength_ok = "Strong.";
+inline constexpr const char* strength_weaker = " Weaker than the current password.";
+inline constexpr const char* strength_same = " About as strong as the current password.";
+inline constexpr const char* strength_stronger = " Stronger than the current password.";
+inline constexpr const char* confirm_weak_password = "Use this password anyway?";
 inline constexpr const char* access_log = "Access log";
 inline constexpr const char* import_csv = "Import CSV";
 inline constexpr const char* imported_fmt =
