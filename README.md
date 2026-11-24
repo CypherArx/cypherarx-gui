@@ -119,7 +119,10 @@ straight alpha, which is what `lamina::render::Image` holds; it is embedded with
   memory and wiped after key derivation, which runs on a worker thread behind a spinner.
   The path of the vault opened last is saved, and the next start asks for its password
   straight away; Cancel leaves the window with no vault open. If that file is not there, the
-  status line says so and the saved path is kept.
+  status line says so and the saved path is kept. A vault in an older format is brought up
+  to the current one when it is opened with the right password (the core's format version);
+  after that, an older build of CypherArx can no longer use it. A vault in a newer format is
+  refused with a message and is not changed.
 - Three columns: a **sidebar** that chooses what to look at, the **entry tree** with a tab for
   each axis and a search box, and the **fields** pane for the selected entry.
 - Entry tree with two views of the same data: **Service axis** (tree by `parent_id`) and

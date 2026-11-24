@@ -64,6 +64,7 @@ const char* vault_error_text(VaultError e) {
         case VaultError::Forbidden:          return text::err_forbidden;
         case VaultError::InvalidValue:       return text::err_invalid_value;
         case VaultError::ScrubFailed:        return text::err_scrub_failed;
+        case VaultError::NewerFormat:        return text::err_newer_format;
         default:                             return text::err_unexpected;
     }
 }

@@ -267,6 +267,8 @@ inline constexpr const char* err_forbidden = "Not allowed for this item.";
 inline constexpr const char* err_invalid_value = "A value is out of range.";
 inline constexpr const char* err_scrub_failed =
     "The key was rotated, but the old data could not be removed from the file.";
+inline constexpr const char* err_newer_format =
+    "This vault was written by a newer version of CypherArx. Update CypherArx to open it.";
 inline constexpr const char* err_unexpected = "Unexpected error.";
 
 } // namespace cypherarx::gui::text
